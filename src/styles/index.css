@@ -1,0 +1,25 @@
+/* ============================================================================
+   STYLE ENTRY
+   The seven original stylesheets are imported in their required cascade order —
+   tokens → base → layout → atoms → molecules → organisms → responsive — exactly
+   as the original index.html loaded them. Each layer may only use values from
+   the ones above it. Reusing them verbatim is what guarantees the React app is
+   pixel-for-pixel identical to the original project.
+
+   Tailwind's utilities/components layers load AFTER, so new components can use
+   utility classes; its preflight reset is disabled (see tailwind.config.js) so
+   it never fights base.css's own reset.
+   ========================================================================== */
+@import './tokens.css';
+@import './base.css';
+@import './layout.css';
+@import './atoms.css';
+@import './molecules.css';
+@import './organisms.css';
+@import './responsive.css';
+
+/* additive fixes layered on top of the reused sheets (kept verbatim) */
+@import './overrides.css';
+
+@tailwind components;
+@tailwind utilities;

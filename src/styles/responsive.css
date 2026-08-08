@@ -1,0 +1,178 @@
+/* ============================================================================
+   MOHSAR — RESPONSIVE
+   Four bands. Each one changes STRUCTURE, not just size — a dashboard that
+   only shrinks its columns stops being usable long before it stops fitting.
+   ========================================================================== */
+
+/* ---- ≤1440px — the grid drops to two columns before the cards get cramped */
+@media (max-width:1440px){
+  .task-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+/* ---- ≤1180px — the sidebar is FORCED to its icon rail.
+   There is no second rail implementation here: app.js puts `.is-rail` on the
+   shell below this width and organisms.css collapses it, so the rail has one
+   set of rules and one width token however it was triggered. Duplicating it
+   here is how it ended up 76px in one place and 84 in the other. */
+@media (max-width:1180px){
+  :root{ --stage-pad:22px; }
+  .rail-toggle{ display:none; }      /* nothing to toggle — it cannot expand */
+  /* the greeting's search drops to its own line rather than squeezing the name */
+  .greeting{ flex-wrap:wrap; }
+  .greeting__search{ width:100%; margin-inline-start:0; }
+}
+
+/* ---- ≤900px — one column of cards; the top bar wraps to two rows and the
+   summary strip stacks so nothing truncates. */
+@media (max-width:900px){
+  .task-grid{ grid-template-columns:1fr; }
+  .topbar{
+    height:auto; flex-wrap:wrap; align-items:flex-start;
+    padding-top:var(--stage-pad); padding-bottom:var(--sp-9); gap:var(--sp-10);
+  }
+  .topbar__title{ margin-bottom:0; align-self:flex-start; }
+  .topbar__actions{ width:100%; margin-left:0; }
+  /* stacked, so the close can no longer ride the end of the health row — it goes
+     to the corner instead, which is where a dismiss belongs on a stacked toast */
+  /* The list row runs out of width for four columns. The title takes its own
+     line and the status, count and action share the one below — better than
+     letting the text column shrink unevenly and knock the pills out of line. */
+  [data-view="list"] .card__body{ flex-wrap:wrap; row-gap:var(--sp-6); }
+  [data-view="list"] .card__text{ flex:1 1 100%; }
+  [data-view="list"] .card__states{ margin-inline-end:var(--sp-8); }
+  [data-view="list"] .card__foot{ margin-inline-start:auto; }
+
+  .summary{ position:relative; min-height:0; padding:var(--sp-9) var(--sp-13) var(--sp-9) var(--sp-10);
+            align-items:flex-start; flex-direction:column; gap:var(--sp-10); }
+  .summary__health{ margin-left:0; }
+  .summary__close{ position:absolute; top:var(--sp-5); right:var(--sp-5); margin:0; }
+  .greeting__title{ font-size:var(--fs-title); line-height:var(--lh-title); }
+}
+
+/* ---- ≤620px — phone. The shell loses its inset so content gets the full
+   width, and the sidebar becomes a bottom bar. */
+@media (max-width:620px){
+  :root{ --shell-pad:0px; --stage-pad:16px; }
+  .app{
+    grid-template-columns:1fr;
+    gap:0;
+    padding-bottom:72px;   /* room for the bottom bar */
+  }
+  .stage{ border-radius:0; border-left:0; border-right:0; border-top:0; }
+
+  /* width:auto with the rail's own specificity — otherwise the 84px rail width
+     wins over left:0/right:0 and the bottom bar is 84px wide in the corner */
+  .app:is(.is-collapsed,.is-rail) .sidebar{ width:auto; }
+  /* width:auto at the rail's own specificity — otherwise the 84px rail width
+     beats left:0/right:0 and the bottom bar sits in the corner */
+  .app:is(.is-collapsed,.is-rail) .sidebar{ width:auto; }
+  .sidebar{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    flex-direction:row; align-items:center; justify-content:space-around;
+    height:72px; padding:0 var(--sp-8);
+    border-radius:0; border-left:0; border-right:0; border-bottom:0;
+    /* the rail's own surface, not a hand-mixed navy — it has to follow the
+       theme like every other panel */
+    background:var(--bg-menu);
+  }
+  /* matched to the rail rules' specificity, not lower — `.sidebar__brand` alone
+     loses to `.app:is(.is-collapsed,.is-rail) .sidebar__brand`, which re-showed
+     the 95px brand block inside a 72px bar and made the bar scroll */
+  .app:is(.is-collapsed,.is-rail) .sidebar__brand,
+  .app:is(.is-collapsed,.is-rail) .sidebar__spacer,
+  .app:is(.is-collapsed,.is-rail) .sidebar__foot,
+  /* search and preferences go with them: a bottom bar is navigation and nothing
+     else, and there is no room to be a settings surface as well */
+  .app:is(.is-collapsed,.is-rail) .sidebar__search,
+  .app:is(.is-collapsed,.is-rail) .sidebar__prefs{ display:none; }
+  .sidebar__nav{ flex-direction:row; gap:0; flex:1; justify-content:space-around; }
+  .nav-item{ width:52px; height:52px; border-radius:var(--r-md); }
+
+  .topbar__actions{ gap:var(--sp-8); }
+
+  .toolbar{ flex-wrap:wrap; gap:var(--sp-10); }
+  .toolbar__views{ display:none; }   /* one column already — a view switch would be a lie */
+  .task-grid{ grid-template-columns:1fr; }
+  .card{ min-height:0; }
+  .greeting__title{ font-size:var(--fs-title); line-height:var(--lh-title); }
+  .tasks__note{ padding-bottom:var(--sp-13); }
+}
+
+/* ---- print — the dashboard as a document ---- */
+@media print{
+  .app-bg,.sidebar,.topbar__actions,.toolbar__end,.greeting__search{ display:none !important; }
+  body{ background:#fff; color:#000; }
+  .app{ display:block; padding:0; }
+  .stage{ background:#fff; border:0; box-shadow:none; }
+  .card{ background:#fff; border:1px solid #ccc; break-inside:avoid; }
+  .card__title,.greeting__title{ color:#000; }
+}
+
+/* ---- TASK DETAIL — the table sheds columns instead of clipping them --------
+   The track list is set from data (--dtable-cols in js/task.js), so narrowing
+   means overriding BOTH the tracks and the cells that used them. Columns go in
+   order of what they are worth to the decision: page count first, then country,
+   then the institution — the filename and the type are the last things left,
+   because those two are what the officer is actually scanning for. */
+@media (max-width:1180px){
+  .dtable{ --dtable-cols:minmax(200px,1.5fr) 128px minmax(150px,1fr) 110px 36px !important; }
+  .dtable__head > :nth-child(5),
+  .dtable__row  > :nth-child(5){ display:none; }
+}
+@media (max-width:900px){
+  .dtable{ --dtable-cols:minmax(180px,1.5fr) 120px minmax(140px,1fr) 36px !important; }
+  .dtable__head > :nth-child(4),
+  .dtable__row  > :nth-child(4){ display:none; }
+}
+@media (max-width:620px){
+  .dtable{ --dtable-cols:minmax(140px,1fr) 110px 36px !important; }
+  .dtable__head > :nth-child(3),
+  .dtable__row  > :nth-child(3){ display:none; }
+  /* the run bar stacks: three controls will not sit on one line at this width */
+  .runbar__actions{ width:100%; }
+  .runbar__actions .btn--primary{ flex:1; }
+}
+
+/* New verification's own bands (drop zone, format row, name row, file table,
+   notice) now live beside the rest of that page's rules in organisms.css,
+   next to the components they narrow — see the NEW VERIFICATION section
+   there. */
+
+/* ---- THE VERIFICATION DRAWER + LIVE PANEL ---------------------------------
+   Below 620 the sidebar becomes a 72px bottom bar (the band above), so both
+   floating pieces need to clear it — a drawer flush with the bottom edge or a
+   panel sitting on top of the nav is the one thing neither can do here. */
+@media (max-width:620px){
+  .verifydrawer{
+    inset:var(--sp-8); bottom:calc(72px + var(--sp-8));
+    width:auto; max-width:none;
+  }
+  .livepanel{
+    left:var(--sp-6); right:var(--sp-6);
+    bottom:calc(72px + var(--sp-6));
+    width:auto; max-width:none;
+  }
+}
+
+/* ---- CERTIFICATE REVIEW ----------------------------------------------------
+   A three-pane console is a desktop tool by nature — this narrows it in the
+   order that costs the least: the queue goes first (its job, switching
+   certificates, is still reachable via the prev/next pair in the page head),
+   then the two remaining panes stack instead of sitting side by side. */
+@media (max-width:1180px){
+  .review{ grid-template-columns:1fr 340px; }
+  .review__queue{ display:none; }
+  /* Change/Agree side by side needs more than 340px minus padding to hold
+     both labels without wrapping — measured overflowing its own panel by 5px
+     at exactly this width. Stacked, each gets the full row. */
+  .revdecide__actions{ flex-direction:column; }
+}
+@media (max-width:900px){
+  .review{
+    grid-template-columns:1fr;
+    grid-auto-rows:min(52vh, 560px) auto;
+    overflow-y:auto;
+  }
+  .review__stage{ min-height:360px; }
+  .review__panel{ min-height:320px; }
+}

@@ -1,0 +1,576 @@
+/* ============================================================================
+   MOHSAR — DESIGN TOKENS
+   The single source of truth. No file below this one may contain a raw colour,
+   size, radius, shadow or duration.
+
+   Every value here was measured off the reference — type sizes solved by
+   matching rendered string widths, box sizes by edge detection, colours by
+   region average — so the scale is the design's, not a guess at it.
+   ========================================================================== */
+
+:root {
+
+  /* ══ 1. PRIMITIVES ══════════════════════════════════════════════════════
+     Raw palette. Components never reference these; the semantic layer does. */
+
+  /* Brand — violet. The one hue MOHSAR owns. */
+  --violet-50:#f4f0ff;  --violet-100:#e9e0ff; --violet-200:#d3c2ff;
+  --violet-300:#b79cfb; --violet-400:#9d74f4; --violet-500:#8a55f0;
+  --violet-600:#7742ea; --violet-700:#6431cf; --violet-800:#5026a6;
+  --violet-900:#3b1c7a; --violet-950:#24104c;
+
+  /* Neutral — navy-biased. A true grey reads dirty on these surfaces. */
+  --navy-50:#eef1f8;  --navy-100:#dbe1ee; --navy-200:#c2cade;
+  --navy-300:#a3aec6; --navy-400:#8794b0; --navy-500:#6b7794;
+  --navy-600:#4d5875; --navy-700:#333e5c; --navy-800:#1e2a48;
+  --navy-850:#16223f; --navy-900:#111e39; --navy-950:#0a1730;
+  --navy-1000:#050f2b;
+
+  /* Status */
+  --red-300:#f8a09a;   --red-400:#f2635c;  --red-500:#e04a43;  --red-600:#b94a43;  --red-700:#a03e38;
+  --sky-300:#93cbf8;   --sky-400:#54abf2;  --sky-500:#2f90e0;
+  --green-300:#a9ebb7; --green-400:#7edc91; --green-500:#4ec46a;
+  --amber-300:#f9d68f; --amber-400:#f0b850; --amber-500:#e09a2b;
+
+  /* Alpha layers — the glass. Alpha over the page, never a flat colour. */
+  --w-02:rgba(255,255,255,.02); --w-03:rgba(255,255,255,.03);
+  --w-04:rgba(255,255,255,.04); --w-05:rgba(255,255,255,.05);
+  --w-06:rgba(255,255,255,.06); --w-08:rgba(255,255,255,.08);
+  --w-10:rgba(255,255,255,.10); --w-12:rgba(255,255,255,.12);
+  --w-16:rgba(255,255,255,.16); --w-24:rgba(255,255,255,.24);
+
+
+  /* ══ 2. SEMANTIC — COLOUR ═══════════════════════════════════════════════
+     Each names a JOB. Components ask for meaning; the system supplies value. */
+
+  --accent:            var(--violet-600);
+  --accent-hover:      var(--violet-500);
+  --accent-active:     var(--violet-700);
+  --accent-on-dark:    #b07cf0;                  /* accent TEXT on dark */
+  --accent-wash:       rgba(119,66,234,.14);
+  /* The active sidebar row. Solved from the reference rather than reused from
+     --accent: the wash there is measurably LESS blue than brand violet, and
+     dropping #7742ea in at any alpha overshoots the blue channel by ~20. */
+  --accent-wash-row:   rgba(93,51,160,.20);
+  --accent-wash-soft:  rgba(119,66,234,.08);
+  --accent-line:       rgba(155,116,244,.42);
+  --accent-line-soft:  rgba(155,116,244,.26);
+  --on-accent:         #ffffff;
+
+  --bg-page:           var(--navy-1000);
+  --bg-stage:          #06102b;   /* measured — the stage base is darker than the page frame */
+  --bg-card:           var(--navy-900);
+  --bg-card-top:       #16223f;    /* cards lift very slightly toward the top */
+  /* THE CARD SURFACE. Glass over the stage rather than an opaque navy panel —
+     the stage is lit by two blooms, and a solid fill blocks them, which is what
+     made every card read as a separate object stuck on top of the page. At this
+     alpha the bloom passes through and the grid becomes part of the surface it
+     sits on. One token: raise the alphas to bring the cards back forward. */
+  /* Three points of white at the top falling to one and a half at the foot.
+     Enough that a card separates from the stage; not enough to become a panel
+     again — the bloom still passes through it. The gradient rather than a flat
+     tint because everything else on this page is lit from the top. */
+  --card-bg: linear-gradient(180deg, rgba(255,255,255,.030), rgba(255,255,255,.015));
+  /* unchanged — the hover Ameer signed off on */
+  --card-bg-hover: rgba(255,255,255,.045);
+  --card-line: var(--line);
+  --bg-sidebar:        rgba(255,255,255,.045);
+  --bg-control:        rgba(255,255,255,.088); /* the design DOES fill these — measured, not assumed */
+  --bg-control-hover:  rgba(255,255,255,.13);
+  --bg-chip:           var(--w-05);
+  --bg-summary:        var(--w-03);
+  --bg-hover:          var(--w-05);
+  --danger-wash:       rgba(242,99,92,.12);
+  /* the sticky footer sits over moving rows, so it is nearly opaque */
+  --runbar-bg:         rgba(17,30,57,.92);
+  --bg-badge-muted:    var(--violet-800);
+  --fg-badge-muted:    var(--violet-100);
+  --bg-menu:           #1b2745;   /* tooltips and menus — one step above the rail */
+  /* the live panel's own surface — violet-dark rather than --bg-menu's navy,
+     because it floats free over the whole page instead of borrowing meaning
+     from whatever it sits on top of the way a tooltip or a menu does */
+  --livepanel-bg:      #1c1338;
+  /* what everything behind an overlay is dimmed by. Dark on both themes: it is
+     shade, not a tint, and a light scrim on a light page dims nothing. */
+  /* deeper than it was: with no blur behind it, dimming is the ONLY thing
+     telling you the page is a layer down */
+  --scrim:             rgba(3,6,18,.78);
+
+  /* ── PAPER ────────────────────────────────────────────────────────────────
+     A scanned document does NOT follow the product's theme. Paper is paper in
+     dark mode and in light mode, because it is a photograph of a real object,
+     not a surface we own. These are the only tokens in the file that are
+     deliberately identical in both themes — swap them and every certificate in
+     the viewer changes; swap the theme and none of them do. */
+  --paper:        #f7f5ef;
+  --paper-edge:   #e2ded1;
+  --paper-ink:    #2b2a26;
+  --paper-ink-2:  #5f5c53;
+  --paper-faint:  #a9a496;
+  --paper-rule:   #cfc9b8;
+  /* five academic colours, one per institution, so a list of documents is not
+     one hue repeated 79 times */
+  --crest-1:#7a1f2b;  --crest-2:#1f3a63;  --crest-3:#1f4d3a;
+  --crest-4:#5b3a7a;  --crest-5:#7a5320;
+
+  --line:              var(--w-08);
+  --line-soft:         var(--w-05);
+  --line-strong:       var(--w-12);
+  /* The row divider carries more weight than a hairline border. It is the ONLY
+     thing separating list rows now that they have no box, so it is a named
+     decision rather than a reuse of --line-soft, which was too faint to see. */
+  --line-divider:      var(--w-12);
+  --line-focus:        var(--violet-400);
+
+  --fg:                #eef1f8;
+  --fg-secondary:      #c8d0e0;
+  --fg-muted:          #94a0b8;
+  --fg-faint:          #77839c;
+  --fg-disabled:       #56617a;
+
+  --danger:  var(--red-400);   --danger-line:rgba(242,99,92,.46);
+  /* STATUS TAG — Option C. The chip carries the status colour at low alpha and
+     the label takes the 300 tint, so four tags in a row still read as one
+     family. No dot: at 26px the chip IS the colour cue. */
+  --tag-late-bg:    rgba(242,99,92,.16);   --tag-late-fg:    var(--red-300);
+  --tag-pending-bg: rgba(240,184,80,.14);  --tag-pending-fg: var(--amber-300);
+  --tag-progress-bg:rgba(84,171,242,.14);  --tag-progress-fg:var(--sky-300);
+  --tag-new-bg:     rgba(135,148,176,.16); --tag-new-fg:     var(--navy-200);
+  --tag-done-bg:    rgba(126,220,145,.14); --tag-done-fg:    var(--green-300);
+  --danger-wash:rgba(242,99,92,.12);   /* the destructive menu row's hover */
+  /* ONE red for the destructive surface, identical in both themes, with a
+     WHITE label. A filled button carries its own ground, so the theme around it
+     changes nothing — which is exactly why this value can be shared where the
+     text red cannot.
+
+     #b94a43, not a pure signal red: saturation 0.47 rather than 0.67. A
+     destructive button has to be unmistakable, not alarming — the officer meets
+     this several times an hour, and a siren red turns a routine tidy-up into an
+     emergency every time. White label at 5.09:1. */
+  --danger-solid:var(--red-600);
+  --danger-solid-hover:var(--red-700);
+  --on-danger:#ffffff;
+  --info:    var(--sky-400);
+  --success: var(--green-400);
+  --neutral: var(--navy-400);
+
+
+  /* ══ 2b. SURFACE RECIPES ════════════════════════════════════════════════
+     The four lit surfaces — page, rail, stage, active row — are multi-layer
+     gradients, so they live here as whole values rather than as rules. A theme
+     then swaps the VALUE and every rule below stays exactly as written. This is
+     the only reason light mode is a token block and not a second stylesheet. */
+
+  --page-bloom:
+    radial-gradient(1180px 840px at -8% -18%, rgba(118,80,172,.28), transparent 58%),
+    radial-gradient(620px 520px at 2% -2%,    rgba(164,110,198,.095), transparent 55%),
+    radial-gradient(860px 700px at 106% 110%, rgba(198,72,156,.42), transparent 58%),
+    radial-gradient(920px 740px at 0% 106%,   rgba(58,64,136,.20), transparent 60%),
+    linear-gradient(160deg,#0b1332 0%, var(--bg-page) 46%, #060d27 100%);
+
+  --rail-bg:
+    radial-gradient(115% 26% at 88% 0%, rgba(214,186,255,.16) 0%, rgba(214,186,255,0) 100%),
+    radial-gradient(58% 34% at 0% 80%,  rgba(236,96,190,.135) 0%, rgba(236,96,190,0) 100%),
+    linear-gradient(180deg,
+      rgba(196,150,255,.170) 0%,  rgba(206,170,255,.104) 3%,
+      rgba(210,232,255,.048) 11%, rgba(200,226,255,.070) 27%,
+      rgba(196,226,255,.082) 50%, rgba(196,226,255,.092) 78%,
+      rgba(196,226,255,.070) 93%, rgba(196,226,255,.052) 100%);
+
+  --rail-ring:
+    radial-gradient(46% 2.6% at 80% 0%,
+      rgba(232,230,252,.62) 0%, rgba(232,230,252,.26) 58%, rgba(232,230,252,0) 100%),
+    radial-gradient(38% 22% at 0% 80%,   rgba(212,180,230,.80) 0%, rgba(212,180,230,0) 100%),
+    radial-gradient(34% 14% at 100% 84%, rgba(190,196,236,.62) 0%, rgba(190,196,236,0) 100%),
+    linear-gradient(128deg,
+      rgba(176,184,222,.62) 0%,  rgba(158,168,208,.70) 34%,
+      rgba(126,138,182,.61) 66%, rgba(110,122,166,.57) 100%);
+
+  --stage-bg:
+    radial-gradient(48% 42% at 0% 0%,    rgba(176,96,200,.195) 0%, rgba(176,96,200,0) 100%),
+    radial-gradient(22% 22% at 45% 0%,   rgba(196,90,170,.15) 0%, rgba(196,90,170,0) 100%),
+    radial-gradient(40% 46% at 100% 96%, rgba(196,80,168,.21) 0%, rgba(196,80,168,0) 100%),
+    linear-gradient(90deg, rgba(120,190,255,.048) 0%, rgba(120,190,255,0) 24%),
+    var(--bg-stage);
+
+  --stage-ring:
+    linear-gradient(150deg,
+      rgba(170,160,210,.42) 0%,  rgba(152,150,200,.24) 26%,
+      rgba(130,140,185,.15) 60%, rgba(118,130,175,.11) 100%);
+
+  /* ── THE OVERLAY (document viewer) ──────────────────────────────────────
+     It used to borrow --bg-menu (#1b2745) — the tooltip surface. At tooltip
+     scale that navy is invisible; at panel scale it is the largest thing on
+     screen and reads as a different product's blue. This is the page's own
+     dark, near-black, with the brand showing only where the light falls: a
+     bloom at the top-left corner and the ring around the edge. Everything
+     else in the panel stays out of the way of the document. */
+  --overlay-bg:
+    radial-gradient(58% 34% at 12% 0%,  rgba(138,85,240,.20) 0%, rgba(138,85,240,0) 100%),
+    radial-gradient(44% 30% at 100% 4%, rgba(198,72,156,.10) 0%, rgba(198,72,156,0) 100%),
+    radial-gradient(60% 40% at 92% 100%,rgba(119,66,234,.09) 0%, rgba(119,66,234,0) 100%),
+    linear-gradient(180deg, #1a2244 0%, #161d3a 62%, #131931 100%);
+
+  --overlay-ring:
+    linear-gradient(142deg,
+      rgba(178,142,252,.78) 0%,  rgba(140,124,216,.40) 24%,
+      rgba(110,118,176,.24) 62%, rgba(96,106,158,.18) 100%);
+
+  /* The well the pages sit in. A LIFT, not a dig: on a dark theme the page
+     behind is already scrimmed to near-black, so darkening the viewer's body
+     put it BELOW its own backdrop and the panel lost its edges. Measured at
+     the foot: panel L=13 against backdrop L=14. It has to go the other way. */
+  --overlay-well: rgba(255,255,255,.035);
+
+  /* Toned to the STAGE ring's weight (.42 → .24 → .15 → .11) rather than the
+     .78 it was: the active row already says "here" with its violet wash, so the
+     ring only has to draw the edge — and at 96deg it keeps the left-bright
+     falloff, so the row is still lit from the same side as everything else. */
+  --nav-active-ring:
+    linear-gradient(96deg,
+      rgba(168,150,220,.42) 0%,  rgba(150,140,205,.24) 14%,
+      rgba(132,132,188,.15) 42%, rgba(122,128,180,.11) 100%);
+
+  /* The primary button's edge light. Same family as --rail-ring and
+     --stage-ring, and it belongs here for the same reason they do: it was the
+     last raw colour left in atoms.css, so it did NOT flip with the theme — a
+     ring mixed for a dark page stayed on the button in light mode. */
+  --btn-ring:
+    radial-gradient(60% 100% at 78% 0%,
+      rgba(240,234,255,.52) 0%, rgba(240,234,255,.12) 62%, rgba(240,234,255,0) 100%),
+    linear-gradient(128deg,
+      rgba(226,216,255,.26) 0%, rgba(196,180,240,.18) 46%, rgba(150,132,205,.14) 100%);
+
+  /* Surface tints. White over a dark page, INK over a light one — the six
+     places that reach for a raw alpha (scrollbar, list hover, field focus,
+     muted badge) go through these so they invert with the theme. */
+  --tint-03:var(--w-03); --tint-04:var(--w-04); --tint-06:var(--w-06);
+  --tint-10:var(--w-10); --tint-16:var(--w-16);
+
+
+  /* ══ 3. TYPOGRAPHY ══════════════════════════════════════════════════════
+     Inter only. This design runs LARGER and LIGHTER than a default dashboard
+     scale, and that airiness is most of its character. */
+  --font:'Inter','SF Pro Text',system-ui,-apple-system,'Segoe UI',sans-serif;
+  /* the face DOCUMENTS are set in. A certificate is content, not chrome — it is
+     serif because certificates are, and it does not follow the product's UI
+     face. No webfont: these are stacks every OS already has. */
+  --font-doc:'Iowan Old Style','Palatino Linotype','Georgia','Times New Roman',serif;
+  --font-doc-sans:'Helvetica Neue',Helvetica,Arial,sans-serif;
+
+  /* Role-named, not t-shirt-sized: every value below was SOLVED against the
+     reference by matching rendered ink widths, so these are the design's sizes
+     rather than a scale that happens to look close. */
+/* THE SCALE — six steps, and every step has a job no other step does.
+     What was here before was a gradient, not a hierarchy: 13·14·15·16·17·19·20,
+     seven sizes inside seven pixels. Nothing can be told apart at ±1px, so the
+     nav label, the tab and the button all read as one undifferentiated mass —
+     which is what made it feel heavy. The whole 10–16 band also ran one to
+     three steps large for a dense workspace.
+
+     11·12·13·14 is fine-grained ON PURPOSE: dense UI lives in that band and
+     WEIGHT and COLOUR do the separating there, not size. The decisive jumps are
+     14 → 16 → 24, and those are the only three sizes a user actually reads as
+     "bigger". Line heights tighten as the size grows, the way they should:
+     1.45 at caption, 1.4 at body, 1.35 at title, 1.33 at display. */
+  --fs-micro:11px;     --lh-micro:16px;     /* counts, badges, ⌘K, micro-labels */
+  --fs-caption:12px;   --lh-caption:16px;   /* meta, helper, tooltips, secondary */
+  --fs-body-sm:13px;   --lh-body-sm:18px;   /* nav rows, tags, card meta, menus  */
+  --fs-body:14px;      --lh-body:20px;      /* THE DEFAULT — tabs, fields, buttons */
+  --fs-title:16px;     --lh-title:22px;     /* card + page titles                */
+  --fs-display:24px;   --lh-display:32px;   /* the greeting, once per screen     */
+
+  /* --fs-note, --fs-body-lg and --fs-title-sm are gone. They were the three
+     steps that made the old ramp a gradient: each one sat a single pixel from
+     its neighbour and named a job that another step already did. */
+
+  /* Weights. These were referenced throughout the build but never declared, so
+     every `font-weight:var(--fw-…)` was an invalid declaration and silently did
+     nothing — the whole app rendered at 400. Declared here, the weights the
+     components already asked for finally apply. */
+  --fw-regular:400;
+  --fw-medium:500;
+  --fw-semibold:600;
+  --fw-bold:700;
+
+  --tracking-tight:-.012em;
+  --tracking-normal:0;
+  --tracking-wide:.04em;
+
+
+  /* ══ 4. SPACE ═══════════════════════════════════════════════════════════ */
+  --sp-1:2px;   --sp-2:4px;   --sp-3:6px;   --sp-4:8px;   --sp-5:10px;
+  --sp-6:12px;  --sp-7:14px;  --sp-8:16px;  --sp-9:20px;  --sp-10:24px;
+  --sp-11:28px; --sp-12:32px; --sp-13:40px; --sp-14:48px; --sp-15:64px;
+
+
+  /* ══ 5. RADIUS ══════════════════════════════════════════════════════════ */
+  --r-2xs:6px; --r-xs:8px; --r-sm:10px; --r-md:12px; --r-lg:14px;
+  --r-xl:18px; --r-panel:11px; --r-full:999px;
+  /* --r-panel: the sidebar and the stage BOTH measure ~10-11px in the
+     reference, not the 22 a glass panel this size usually gets. */
+
+
+  /* ══ 6. SIZE — control heights, measured off the design ═════════════════ */
+  --h-control:38px;   /* search, theme, language, the type filter */
+  /* ONE height for every button, primary and secondary alike, and it is the
+     same height as every other control. There were three (48 for card actions,
+     56 for the CTA, 38 in the toolbar), so the same component was three sizes
+     depending on where it stood. Width still follows the label; height never
+     does. */
+  --h-btn:var(--h-control);
+  --h-pill:26px;      /* status tags — Option C  */
+  --w-pill:132px;     /* every state pill, sized to "In progress" */
+  --h-nav:58px;       /* sidebar rows            */
+  --h-badge:28px;     /* circular count          */
+  --h-runbar:88px;    /* the sticky footer — the snackbar sits clear of it */
+  --h-summary:60px;
+  --h-card:248px;
+  --h-control-sm:34px;/* the rail's search   */
+  --h-seg:32px;       /* segmented option    */
+  --h-check:20px;     /* checkbox            */
+  --drawer-w:520px;   /* the document drawer */
+  /* wider than the document drawer on purpose: that one previews a page you
+     already know the shape of; this one holds a data table (name, size,
+     status) that gets cramped well before 520px does */
+  --verify-drawer-w:640px;
+  --livepanel-w:360px;
+  --shell-gap:22px;   /* rail → stage. The viewer's full-screen edge lands on
+                         this same value, so the two can never drift. */
+  --h-thumb:34px;     /* document thumbnail  */
+  --h-row:52px;       /* a table row         */
+  --h-progress:8px;   /* the run's bar       */
+  /* THE DROP TARGET. Big on purpose: it is the one thing on the upload screen
+     you aim at rather than read, and a target you have to aim carefully at is
+     the whole reason people give up and use the file picker instead. */
+  --h-drop:236px;
+  --h-drop-tile:56px; /* the arrow's tile inside it */
+  --h-step:22px;      /* a stage's mark      */
+  --aside-w:320px;    /* results column      */
+
+
+  /* ══ 7. ELEVATION ═══════════════════════════════════════════════════════ */
+  --shadow-sm:0 1px 2px rgba(0,0,0,.28);
+  --shadow-md:0 6px 18px -4px rgba(0,0,0,.38);
+  --shadow-lg:0 18px 44px -12px rgba(0,0,0,.52);
+  --shadow-accent:0 10px 30px -10px rgba(119,66,234,.5);
+  /* things that float ABOVE the page — tooltips, menus, popovers. Was raw on
+     .tip, which meant a heavy black drop stayed under a white tooltip in light. */
+  --shadow-menu:0 10px 30px rgba(0,0,0,.45);
+  /* the overlay's own elevation — it has to read against a page of the same
+     darkness, so it goes further than --shadow-lg does */
+  --shadow-overlay:0 40px 90px -20px rgba(0,0,0,.85), 0 0 0 1px rgba(0,0,0,.4);
+
+
+  /* ══ 8. MOTION ══════════════════════════════════════════════════════════ */
+  --ease:cubic-bezier(.4,0,.2,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --t-fast:120ms; --t:180ms; --t-slow:280ms;
+
+
+  /* ══ 9. LAYOUT ══════════════════════════════════════════════════════════ */
+  --shell-pad:20px;      /* the design's shell inset is NOT symmetric */
+  --shell-pad-t:19px;
+  --shell-pad-r:22px;
+  --shell-pad-b:22px;
+  /* ONE inset for the whole rail, and it is applied ONCE — on the panel. Rows
+     inside (brand · nav · account) add nothing of their own horizontally, so
+     every row's leading block starts on that single line: the logo tile, the
+     nav row's hover/active pill, and the avatar. They used to pad by it a
+     second time, which set the logo and the avatar 14px inside the line the
+     nav pill sits on — the pill visibly overhung both. Row CONTENT is still
+     inset within its own pill (nav icon at 28); that is internal padding, not
+     the row edge. Nothing in the rail may invent its own horizontal spacing. */
+  --rail-pad:14px;
+  --brand-mark:46px;
+  --sidebar-w:248px;
+  --sidebar-w-collapsed:84px;
+  --stage-pad:28px;
+  --grid-gap:16px;
+  --topbar-h:100px;
+}
+
+
+/* ============================================================================
+   LIGHT THEME
+   Not "the dark theme with the colours flipped". The dark screen is lit from
+   the top-left by a violet bloom; the light screen is lit the same way, by the
+   same bloom, at a fraction of the strength — so the two read as one product in
+   two conditions rather than two designs.
+
+   Three rules hold it together:
+     · the ink is a deep violet-navy, never black — black on a tinted white
+       looks like a bug report, not a product
+     · every border becomes INK alpha, not white alpha, or it disappears
+     · the rail and the stage keep their gradients and their gradient strokes.
+       Flattening them to plain white is what makes a light theme look cheap.
+   ========================================================================== */
+[data-theme="light"]{
+
+  /* ---- ink ------------------------------------------------------------- */
+  /* Contrast, not taste. The lavender-greys below were 3:1 on a near-white
+     card — under the 4.5:1 AA floor for the meta lines that carry the dates
+     and the "sent to you" attribution, which are read, not decorative.
+     --fg-faint is the LIGHTEST value allowed on anything that must be read;
+     nothing paler than this may carry words. --fg-disabled is exempt: it marks
+     a control that is deliberately unavailable, which AA does not govern. */
+  --fg:            #1f1b2e;   /* ~14.9:1 */
+  --fg-secondary:  #453e6b;   /* ~8.9:1  */
+  --fg-muted:      #5b5673;   /* ~6.4:1  — meta lines, the ones that failed */
+  --fg-faint:      #6e6989;   /* ~4.8:1  — the floor. Never go paler. */
+  --fg-disabled:   #a09ab8;   /* non-text state, exempt from the 4.5 floor */
+
+  /* ---- surfaces --------------------------------------------------------- */
+  --bg-page:       #f2effa;
+  --bg-stage:      #ffffff;
+  --bg-card:       #ffffff;
+  --bg-card-top:   #fbf9ff;
+  /* On white the same idea inverts: the card lifts with white OVER the tinted
+     stage instead of a tint over dark, or it would disappear entirely. */
+  /* Light inverts the idea: on a near-white stage a transparent card has
+     nothing to lift against, so here the card is WHITE over the tint rather
+     than tint over dark — and the edge carries a step more weight, because at
+     this contrast the stroke is doing most of the separating. */
+  --card-bg: linear-gradient(180deg, rgba(255,255,255,.50), rgba(255,255,255,.26));
+  --card-bg-hover: rgba(255,255,255,.62);
+  --card-line: var(--line-strong);
+  --bg-menu:       #ffffff;
+  /* the same idea as dark — violet rather than the neutral --bg-menu white —
+     at the alpha a white ground can carry, same as every other surface on
+     this page inverts rather than just flips to plain white */
+  --livepanel-bg:  #f6f2ff;
+  --scrim:         rgba(40,30,80,.46);
+
+  --bg-control:       rgba(255,255,255,.78);
+  --bg-control-hover: rgba(255,255,255,.96);
+  --bg-chip:          rgba(27,22,56,.045);
+  --bg-summary:       rgba(255,255,255,.58);
+  --bg-hover:         rgba(27,22,56,.045);
+  --danger-wash:      rgba(224,74,67,.10);
+  --runbar-bg:        rgba(255,255,255,.94);
+  --bg-badge-muted:   rgba(119,66,234,.13);
+  --fg-badge-muted:   var(--violet-700);
+
+  /* ---- lines: ink alpha, never white ------------------------------------ */
+  --line:          rgba(27,22,56,.11);
+  --line-soft:     rgba(27,22,56,.075);
+  --line-strong:   rgba(27,22,56,.17);
+  --line-divider:  rgba(27,22,56,.15);
+  --line-focus:    var(--violet-600);
+
+  --tint-03:rgba(27,22,56,.035); --tint-04:rgba(27,22,56,.05);
+  --tint-06:rgba(27,22,56,.07);  --tint-10:rgba(27,22,56,.14);
+  --tint-16:rgba(27,22,56,.22);
+
+  /* ---- accent ------------------------------------------------------------
+     The brand violet is unchanged — it is the one thing that must not shift
+     between themes. Only the TEXT tint darkens, because #b07cf0 on white is
+     unreadable. */
+  --accent-on-dark:   #6431cf;
+  --accent-wash:      rgba(119,66,234,.10);
+  --accent-wash-soft: rgba(119,66,234,.06);
+  --accent-line:      rgba(119,66,234,.34);
+  --accent-line-soft: rgba(119,66,234,.20);
+  --accent-wash-row:  rgba(119,66,234,.085);
+
+  /* status: the 400s are tuned for dark surfaces and go pale on white */
+  --danger:  var(--red-500);   --danger-line:rgba(224,74,67,.40);
+  --tag-late-bg:    rgba(224,74,67,.13);   --tag-late-fg:   #b5322a;
+  --tag-pending-bg: rgba(224,154,43,.15);  --tag-pending-fg:#8a5b06;
+  --tag-progress-bg:rgba(47,144,224,.11);  --tag-progress-fg:#1f6fb0;
+  --tag-new-bg:     rgba(77,88,117,.10);   --tag-new-fg:    var(--navy-600);
+  --tag-done-bg:    rgba(47,166,77,.11);   --tag-done-fg:   #1f7a3a;
+  --danger-wash:rgba(224,74,67,.10);
+  /* the SAME red and the SAME label as dark — see the note in :root */
+  --danger-solid:var(--red-600);
+  --danger-solid-hover:var(--red-700);
+  --on-danger:#ffffff;
+  --info:    var(--sky-500);
+  --success: #2fa64d;
+  --neutral: var(--navy-500);
+
+  /* ---- surfaces, restated ------------------------------------------------
+     Same geometry as dark — same bloom positions, same ring direction — at the
+     alphas a white ground can carry. */
+  --page-bloom:
+    radial-gradient(1180px 840px at -8% -18%, rgba(150,105,225,.20), transparent 58%),
+    radial-gradient(620px 520px at 2% -2%,    rgba(186,132,232,.13), transparent 55%),
+    radial-gradient(860px 700px at 106% 110%, rgba(232,110,190,.20), transparent 58%),
+    radial-gradient(920px 740px at 0% 106%,   rgba(120,140,240,.14), transparent 60%),
+    linear-gradient(160deg,#f7f4ff 0%, var(--bg-page) 46%, #eae5f8 100%);
+
+  /* the rail stays glass: white, tinted violet at the top, warmer low-left */
+  --rail-bg:
+    radial-gradient(115% 30% at 88% 0%, rgba(158,104,238,.155) 0%, rgba(158,104,238,0) 100%),
+    radial-gradient(62% 38% at 0% 82%,  rgba(232,104,188,.13) 0%, rgba(232,104,188,0) 100%),
+    linear-gradient(180deg,
+      rgba(255,255,255,.90) 0%,  rgba(255,255,255,.84) 3%,
+      rgba(255,255,255,.76) 11%, rgba(255,255,255,.71) 27%,
+      rgba(255,255,255,.68) 50%, rgba(255,255,255,.72) 78%,
+      rgba(255,255,255,.63) 93%, rgba(255,255,255,.56) 100%);
+
+  /* the ring inverts: on white, edge light reads as a soft violet SHADOW line,
+     brightest where the dark theme is brightest so the form is unchanged */
+  --rail-ring:
+    radial-gradient(46% 2.6% at 80% 0%,
+      rgba(255,255,255,.95) 0%, rgba(255,255,255,.40) 58%, rgba(255,255,255,0) 100%),
+    radial-gradient(38% 22% at 0% 80%,   rgba(206,120,205,.34) 0%, rgba(206,120,205,0) 100%),
+    radial-gradient(34% 14% at 100% 84%, rgba(140,120,225,.30) 0%, rgba(140,120,225,0) 100%),
+    linear-gradient(128deg,
+      rgba(255,255,255,.92) 0%,  rgba(150,130,215,.26) 34%,
+      rgba(120,105,180,.20) 66%, rgba(100,90,160,.17) 100%);
+
+  --stage-bg:
+    radial-gradient(52% 46% at 0% 0%,    rgba(160,96,236,.135) 0%, rgba(160,96,236,0) 100%),
+    radial-gradient(24% 24% at 45% 0%,   rgba(216,102,190,.085) 0%, rgba(216,102,190,0) 100%),
+    radial-gradient(44% 50% at 100% 96%, rgba(216,92,182,.125) 0%, rgba(216,92,182,0) 100%),
+    linear-gradient(90deg, rgba(110,140,255,.055) 0%, rgba(110,140,255,0) 26%),
+    var(--bg-stage);
+
+  --stage-ring:
+    linear-gradient(150deg,
+      rgba(255,255,255,.95) 0%,  rgba(150,132,210,.22) 26%,
+      rgba(120,105,180,.17) 60%, rgba(104,92,158,.14) 100%);
+
+  /* light keeps the same idea the other way up: white panel, the brand only in
+     the corner where the light lands */
+  --overlay-bg:
+    radial-gradient(58% 34% at 12% 0%, rgba(138,85,240,.07) 0%, rgba(138,85,240,0) 100%),
+    linear-gradient(180deg, #ffffff 0%, #fbfaff 100%);
+
+  --overlay-ring:
+    linear-gradient(142deg,
+      rgba(150,116,240,.50) 0%,  rgba(150,132,210,.20) 26%,
+      rgba(120,105,180,.14) 62%, rgba(104,92,158,.11) 100%);
+
+  --overlay-well: rgba(40,30,80,.05);
+
+  --nav-active-ring:
+    linear-gradient(96deg,
+      rgba(119,66,234,.30) 0%,  rgba(119,66,234,.15) 14%,
+      rgba(119,66,234,.09) 42%, rgba(119,66,234,.06) 100%);
+
+  /* On white the button's edge light inverts with everything else: white-on-
+     violet reads as a blown highlight here, so the ring becomes a soft ink edge
+     that darkens the button's own boundary instead of lifting it. */
+  --btn-ring:
+    radial-gradient(60% 100% at 78% 0%,
+      rgba(255,255,255,.42) 0%, rgba(255,255,255,.10) 62%, rgba(255,255,255,0) 100%),
+    linear-gradient(128deg,
+      rgba(58,38,120,.20) 0%, rgba(58,38,120,.13) 46%, rgba(58,38,120,.10) 100%);
+
+  /* ---- elevation ---------------------------------------------------------
+     Shadows on white are violet-tinted and much softer. A black shadow on a
+     tinted ground turns grey and dirties every panel it touches. */
+  --shadow-sm:0 1px 2px rgba(58,38,120,.08);
+  --shadow-md:0 8px 22px -6px rgba(58,38,120,.16);
+  --shadow-lg:0 20px 50px -16px rgba(58,38,120,.20);
+  --shadow-accent:0 10px 26px -10px rgba(119,66,234,.42);
+  --shadow-menu:0 12px 34px -8px rgba(58,38,120,.24);
+  --shadow-overlay:0 40px 90px -20px rgba(58,38,120,.34), 0 0 0 1px rgba(58,38,120,.08);
+}
+
+@media (prefers-reduced-motion:reduce){
+
+  :root{ --t-fast:1ms; --t:1ms; --t-slow:1ms; }
+}

@@ -1,0 +1,17 @@
+/* ============================================================================
+   MOHSAR — LAYOUT
+   The shell only. Everything that has a surface lives in organisms.css.
+   ========================================================================== */
+
+/* The shell is exactly one viewport tall and never scrolls. The ONLY scrollable
+   region in the product is the task list, so the rail and the header stay put
+   however long the queue gets. */
+.app{
+  position:relative; z-index:1;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:var(--shell-gap);
+  height:100vh; height:100dvh;
+  padding:var(--shell-pad-t) var(--shell-pad-r) var(--shell-pad-b) var(--shell-pad);
+  overflow:hidden;
+}

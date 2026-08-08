@@ -1,0 +1,2365 @@
+/* ============================================================================
+   MOHSAR — ORGANISMS
+   Molecules assembled into a region of the page. These know their context.
+   ========================================================================== */
+
+/* ─────────────────────────────────────────────────────────────── SIDEBAR ──
+   Glass over the ambient bloom, with a vertical gradient: the panel is lit
+   from the top-left like everything else, so a flat wash reads pasted-on. */
+.sidebar{
+  /* above the stage: both are position:relative siblings, so without this the
+     stage paints over the rail and swallows the collapsed tooltip */
+  position:relative; z-index:10;
+  display:flex; flex-direction:column;
+  width:var(--sidebar-w);
+  padding:var(--rail-pad);
+  border-radius:var(--r-panel);
+  /* The panel's own gradient. Measured off the reference: lightest along the top
+     — and brighter toward the top RIGHT, not the left — deepest through the
+     middle, lifting slightly again around the account row.
+     There is NO inner glow. The reference edge is a 1px stroke and nothing
+     more; an inset shadow paints a bright bar a few pixels deep that the
+     design does not have, on the left and along the bottom. */
+  background:var(--rail-bg);
+  backdrop-filter:blur(20px) saturate(112%);
+  -webkit-backdrop-filter:blur(20px) saturate(112%);
+  overflow:visible;             /* the collapsed tooltip escapes the rail */
+  transition:width var(--t-slow) var(--ease-out);
+}
+/* The STROKE, as a masked gradient ring. It cannot be a `border-box` background
+   layer: with a translucent panel that layer floods the whole surface instead of
+   staying on the edge. Masking a 1px ring is the only way to get a gradient
+   stroke over glass.
+   It is visible on ALL FOUR edges — sampled round the perimeter it never drops
+   below luminance 90 against an interior of ~38, so a stroke that fades out is
+   simply missing. Two things modulate it:
+     · brightest at the TOP-RIGHT (#bbbada) falling toward the bottom
+     · a second bright patch low on the LEFT (#c1a5d4), which is the page's
+       violet bloom sitting behind the glass and lighting that stretch of edge
+   Hence two layers: a diagonal base plus a radial for the bloom. */
+.sidebar::before{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  padding:1px; pointer-events:none;
+  background:var(--rail-ring);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask-composite:exclude;
+}
+
+/* ── COLLAPSED RAIL ───────────────────────────────────────────────────────
+   Same component, narrower. Labels, counts and the account text go; the icons,
+   the active state and the collapse control stay, so nothing about "where am I"
+   is lost when the rail narrows. */
+.app:is(.is-collapsed,.is-rail) .sidebar{ width:var(--sidebar-w-collapsed); }
+.app:is(.is-collapsed,.is-rail) .sidebar{ padding-left:var(--sp-5); padding-right:var(--sp-5); }
+.app:is(.is-collapsed,.is-rail) .brand__text,
+.app:is(.is-collapsed,.is-rail) .nav-item__label,
+.app:is(.is-collapsed,.is-rail) .nav-item .badge,
+.app:is(.is-collapsed,.is-rail) .user__text,
+.app:is(.is-collapsed,.is-rail) .rail-toggle__label,
+.app:is(.is-collapsed,.is-rail) .user__chevron{
+  /* flex:none as well as width:0 — the label is flex:1 when expanded, and a
+     grown-but-empty child still eats the row and shoves the icon off centre */
+  flex:none; opacity:0; width:0; min-width:0; margin:0; padding:0; border:0;
+  overflow:hidden; white-space:nowrap; pointer-events:none;
+}
+.app:is(.is-collapsed,.is-rail) .sidebar__brand{ display:flex; justify-content:center; gap:0; padding-left:0; padding-right:0; }
+/* gap:0 as well as justify-content — a zero-width label still contributes its
+   gap, which would leave every icon 5px left of centre */
+/* Collapsed, a nav row's surface is the SAME BOX as the logo tile — 46 square,
+   same radius, centred in the rail. A full-width row reads as a different
+   component to the mark sitting directly above it. */
+.app:is(.is-collapsed,.is-rail) .nav-item{
+  width:var(--brand-mark); height:var(--brand-mark);
+  margin-inline:auto; padding:0;
+  border-radius:var(--r-md);
+  justify-content:center; gap:0;
+}
+.app:is(.is-collapsed,.is-rail) .user{ justify-content:center; gap:0; padding-left:0; padding-right:0; }
+/* the icon carries its own 18px of air when expanded — that margin is what
+   pushes every collapsed icon 9px left of centre if it is not cleared */
+.app:is(.is-collapsed,.is-rail) .nav-item__icon{ margin-right:0; }
+.app:is(.is-collapsed,.is-rail) .nav-item .badge{ margin-left:0; }
+/* Collapsed, the toggle goes entirely — the brand mark becomes the expand
+   control instead, so the rail spends no space on its own chrome (Spark). */
+.app:is(.is-collapsed,.is-rail) .rail-toggle{ display:none; }
+.app:is(.is-collapsed,.is-rail) .sidebar__brand,
+.app:is(.is-collapsed,.is-rail) .user{ padding-left:0; padding-right:0; }
+
+/* ── COLLAPSED TOOLTIP ────────────────────────────────────────────────────
+   Spark's `.tip`: it lives beside the rail, slides in 8px from the left, and
+   carries a rotated-square arrow so it reads as attached to the row rather
+   than floating near it. Same anatomy, MOHSAR's surface tokens. */
+.tip{
+  position:absolute; left:calc(100% + 16px); top:50%;
+  transform:translate(-8px,-50%);
+  display:none; align-items:center; gap:var(--sp-5);
+  padding:8px 12px; border-radius:var(--r-sm);
+  background:var(--bg-menu); border:1px solid var(--line-strong);
+  color:var(--fg); font-size:var(--fs-caption); font-weight:var(--fw-medium);
+  line-height:1; white-space:nowrap; letter-spacing:0;
+  box-shadow:var(--shadow-menu);
+  opacity:0; pointer-events:none; z-index:60;
+  transition:opacity var(--t) var(--ease), transform var(--t) var(--ease);
+}
+.tip::before{
+  content:''; position:absolute; left:-5px; top:50%;
+  width:8px; height:8px; rotate:45deg; translate:0 -50%;
+  background:var(--bg-menu);
+  border-left:1px solid var(--line-strong);
+  border-bottom:1px solid var(--line-strong);
+}
+.tip__count{
+  padding:1px 6px; border-radius:var(--r-full);
+  background:var(--accent); color:var(--on-accent);
+  font-size:var(--fs-micro); font-variant-numeric:tabular-nums;
+}
+/* only while the rail is narrow — expanded, the label is already on screen */
+.app:is(.is-collapsed,.is-rail) .nav-item,
+.app:is(.is-collapsed,.is-rail) .brand__mark,
+.app:is(.is-collapsed,.is-rail) .user{ position:relative; }
+.rail-toggle .tip{ display:inline-flex; }
+.rail-toggle:hover .tip,
+.rail-toggle:focus-visible .tip{ opacity:1; transform:translate(0,-50%); }
+.app:is(.is-collapsed,.is-rail) .tip{ display:inline-flex; }
+.app:is(.is-collapsed,.is-rail) :is(.nav-item,.brand__mark,.user):hover .tip,
+.app:is(.is-collapsed,.is-rail) :is(.nav-item,.brand__mark,.user):focus-visible .tip{
+  opacity:1; transform:translate(0,-50%);
+}
+
+/* NO left inset of its own. The rail's own --rail-pad already sets the content
+   edge, and the leading block of every row — the brand mark here, the avatar in
+   the account row, the hover/active pill on a nav row — starts on that one line.
+   The brand row used to add --rail-pad again, which put the violet mark 14px
+   inside the line the nav pill sits on, so the pill visibly stuck out to the
+   left of the logo. Vertical padding is untouched. */
+.sidebar__brand{ padding:var(--rail-pad) 0;
+  margin-bottom:var(--sp-9); }
+
+/* The rail control sits in the BRAND ROW, flush at the content edge — Spark's
+   placement (its `.nx-head` puts the collapse button on the same line as the
+   mark and the wordmark). It is never a row of its own. */
+.rail-toggle{
+  /* absolute, not a flex sibling: as a flex child it reserved its width from
+     BOTH brand lines and squeezed "Certificate checks" underneath itself. Out
+     of flow it sits beside the short wordmark and the sub-line runs clear. */
+  position:absolute; top:calc(var(--rail-pad) + (var(--brand-mark) - 32px) / 2);
+  inset-inline-end:0;
+  display:grid; place-items:center;
+  width:32px; height:32px;
+  border-radius:var(--r-xs);
+  color:var(--fg-muted);
+  cursor:pointer;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.rail-toggle:hover{ background:var(--bg-hover); color:var(--fg); }
+.rail-toggle__icon{ display:grid; place-items:center; flex:none;
+  transition:transform var(--t-slow) var(--ease-out); }
+.sidebar__nav{ display:flex; flex-direction:column; gap:var(--sp-3); }
+.sidebar__spacer{ flex:1 1 auto; min-height:var(--sp-10); }
+.sidebar__foot{ border-top:1px solid var(--line-soft); padding-top:var(--rail-pad); }
+
+/* ── SEARCH IN THE RAIL ───────────────────────────────────────────────────
+   Between the logo and the nav. It is the first thing you reach for and it
+   applies wherever you are, so it belongs with the other things that are true
+   everywhere — not in a page's own top bar. */
+.sidebar__search{ margin-bottom:var(--sp-9); }
+
+/* ── PREFERENCES ──────────────────────────────────────────────────────────
+   Theme and language, directly above the account row and separated from the
+   nav by the same hairline the account uses. Both are settings for the PERSON,
+   so they sit with the person rather than with the page. */
+.sidebar__prefs{
+  display:flex; align-items:center; gap:var(--sp-5);
+  /* --rail-pad, like everything else stacked in the rail: the account row below
+     carries the same 14 top and bottom, so the divider → control → divider →
+     account rhythm is one value rather than three. */
+  padding:var(--rail-pad) 0;
+  border-top:1px solid var(--line-soft);
+}
+/* the language takes whatever is left, so the two controls fill the rail's
+   width instead of clustering at one end */
+.sidebar__prefs .select--bare{ flex:1; min-width:0; }
+.sidebar__prefs .select__value{ flex:1; }
+.prefs__sep{
+  width:1px; height:var(--sp-9); flex:none;
+  align-self:center;
+  background:var(--line);
+}
+
+/* ── COLLAPSED: SEARCH + PREFERENCES ──────────────────────────────────────
+   Same components, no labels — the rule the rest of the rail already follows.
+   Search becomes the icon tile the nav rows are; the theme keeps only the
+   option you are NOT on, because at 46px there is room for one glyph and the
+   useful one is the thing you would switch to; the language keeps its globe. */
+.app:is(.is-collapsed,.is-rail) .sidebar__search{ margin-bottom:var(--sp-9); }
+.app:is(.is-collapsed,.is-rail) .field--rail{
+  position:relative;
+  width:var(--brand-mark); height:var(--brand-mark);
+  margin-inline:auto; padding:0;
+  /* gap:0 as well as justify-content — the SAME trap the nav rows carry a note
+     about. The input and the ⌘ hint are collapsed to width:0, but a zero-width
+     flex child still contributes the row's 10px gap, and two of them pushed the
+     magnifier 10px left of the column every other glyph sits on. */
+  justify-content:center; gap:0;
+  border-radius:var(--r-md);
+  cursor:pointer;
+}
+.app:is(.is-collapsed,.is-rail) .field--rail input,
+.app:is(.is-collapsed,.is-rail) .field--rail .field__kbd{
+  flex:none; opacity:0; width:0; min-width:0; margin:0; padding:0; border:0;
+  overflow:hidden; pointer-events:none;
+}
+.app:is(.is-collapsed,.is-rail) .sidebar__prefs{
+  flex-direction:column; gap:var(--sp-4);
+  padding:var(--sp-6) 0;
+}
+.app:is(.is-collapsed,.is-rail) .prefs__sep{ display:none; }
+.app:is(.is-collapsed,.is-rail) .seg__btn.is-on{ display:none; }
+.app:is(.is-collapsed,.is-rail) .seg__btn{ width:var(--h-control-sm); height:var(--h-control-sm); }
+.app:is(.is-collapsed,.is-rail) .sidebar__prefs .select--bare{
+  flex:none; width:var(--h-control-sm); height:var(--h-control-sm);
+  /* gap:0 for the same reason — the zeroed label and chevron were still paying
+     two gaps, which is what pulled the globe off the column */
+  justify-content:center; gap:0; padding:0;
+}
+.app:is(.is-collapsed,.is-rail) .select--bare .select__value,
+.app:is(.is-collapsed,.is-rail) .select--bare .select__chevron{
+  flex:none; opacity:0; width:0; min-width:0; margin:0; padding:0;
+  overflow:hidden; pointer-events:none;
+}
+/* the tooltip needs an anchor, same as the nav rows and the account */
+.app:is(.is-collapsed,.is-rail) :is(.field--rail,.seg__btn,.select--bare){ position:relative; }
+.app:is(.is-collapsed,.is-rail) :is(.field--rail,.seg__btn,.select--bare):hover .tip,
+.app:is(.is-collapsed,.is-rail) :is(.field--rail,.seg__btn,.select--bare):focus-within .tip{
+  opacity:1; transform:translate(0,-50%);
+}
+
+
+/* ───────────────────────────────────────────────────────────────── STAGE ── */
+/* The stage is NOT a flat fill. Two violet blooms sit inside it — a large one
+   in the top-left corner (#2b224c against a #06102b base) and a second, redder
+   one low on the right (#2b1b3d) — and the base between them is darker than the
+   page frame. Flat navy is what made this read as a plain dark box beside the
+   design rather than the lit panel it is. */
+.stage{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; min-width:0;
+  background:var(--stage-bg);
+  border:0;
+  border-radius:var(--r-panel);
+  box-shadow:var(--shadow-lg);
+  overflow:hidden;
+}
+/* Its stroke is a gradient too — #4b496b along the top-left, nearly gone by the
+   bottom-right. A flat 8% white border is what makes a panel read as a box. */
+.stage::before{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  padding:1px; pointer-events:none; z-index:2;
+  background:var(--stage-ring);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask-composite:exclude;
+}
+.stage__body{
+  display:flex; flex-direction:column; flex:1; min-height:0;
+  padding:0 var(--stage-pad) var(--sp-5);
+}
+
+
+/* ──────────────────────────────────────────────────────────────── TOPBAR ── */
+/* The lead sits at the TOP of the bar, inset by the same --stage-pad that sets
+   its left edge — so the gap above "My tasks" and the gap to its left are one
+   value, not two. It used to be centred in the 100px bar, which put the text 39
+   from the top against 28 from the left and read as a heavier top margin than
+   the page actually has. The bar keeps its height; only the content moved. */
+.topbar{
+  display:flex; align-items:flex-start; gap:var(--sp-8);
+  height:var(--topbar-h); padding:var(--stage-pad) var(--stage-pad) 0;
+  flex:none;
+}
+/* Carrying a breadcrumb instead of a title, the bar is a strip: one line of
+   text with a little air. The 100px belongs to the title's underline, and
+   spending it on a crumb pushes the whole page down for nothing. */
+.topbar--crumbs{
+  height:auto; align-items:center;
+  padding:var(--sp-8) var(--stage-pad) var(--sp-6);
+}
+.topbar__title{
+  position:relative;
+  font-size:var(--fs-title); line-height:var(--lh-title);
+  font-weight:var(--fw-medium); color:var(--fg);
+  padding-bottom:var(--sp-5);
+  /* the 4px nudge that optically centred it in the old bar is gone with the
+     centring — the padding above is the measurement now */
+}
+.topbar__title::after{
+  content:''; position:absolute; left:0; right:0; bottom:0;
+  height:2px; border-radius:2px; background:var(--accent);
+}
+.topbar__actions{ display:flex; align-items:center; gap:var(--sp-9); margin-left:auto; }
+
+
+/* ────────────────────────────────────────────────────────────── GREETING ── */
+.greeting{
+  display:flex; align-items:flex-start; gap:var(--sp-10);
+  padding:var(--sp-7) 0 var(--sp-9);
+  flex:none;
+}
+.greeting__title{
+  font-size:var(--fs-display); line-height:var(--lh-display);
+  font-weight:var(--fw-regular); letter-spacing:var(--tracking-tight);
+  color:var(--fg);
+}
+.greeting__meta{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg-muted);
+}
+/* the page's own search, centred against the greeting the way the task page's
+   is centred against its title */
+.greeting__text{ min-width:0; }
+/* Centred on the GREETING LINE, not on the greeting block. Centring on the
+   block would drop it between the name and the date; the offset lines its
+   midpoint up with the title's own, whatever the meta line does. */
+.greeting__search{
+  width:320px; height:38px; flex:none;
+  margin-inline-start:auto;
+  margin-top:calc((var(--lh-display) - 38px) / 2);
+}
+
+/* the view switch and the primary action share one end of the toolbar */
+/* The 10px lift belongs to the GROUP, not to the view switch. On the switch
+   alone it made that child 48px tall in the flex line, so the button beside it
+   centred against 48 and sat 5px lower than the icons it is meant to match. */
+.toolbar__end{
+  display:flex; align-items:center; gap:var(--sp-8);
+  margin-inline-start:auto; margin-bottom:var(--sp-5);
+}
+
+
+/* ─────────────────────────────────────────────────────────────── SUMMARY ──
+   A toast, not a fixture: it reports the state of the queue and the officer can
+   close it. It stays in the flow rather than floating — this is a summary OF the
+   list below it, so it has to sit with the list to mean anything, and a floating
+   panel would cover the very cards it is counting. */
+.summary{
+  display:flex; align-items:center; gap:var(--sp-8);
+  min-height:var(--h-summary); padding:0 var(--sp-10);
+  border:1px solid var(--line-soft); border-radius:var(--r-xl);
+  background:var(--bg-summary);
+  flex:none;
+  /* dismissal animates height as well as opacity, so the page closes the gap
+     instead of leaving a hole where the strip was */
+  overflow:hidden;
+  transition:opacity var(--t) var(--ease), transform var(--t) var(--ease),
+             min-height var(--t-slow) var(--ease-out), margin var(--t-slow) var(--ease-out),
+             padding var(--t-slow) var(--ease-out), border-width var(--t-slow) var(--ease-out);
+}
+.summary__list{ display:flex; align-items:center; gap:var(--sp-8); flex-wrap:wrap; min-width:0; }
+.summary__health{
+  display:flex; align-items:center; gap:var(--sp-5);
+  margin-left:auto; white-space:nowrap;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+/* The close sits after the health reading, hard against the right edge. It is
+   quiet until you go near it — a dismiss is never the reason you looked here. */
+.summary__close{
+  display:inline-flex; align-items:center; justify-content:center;
+  flex:none; width:28px; height:28px; margin-left:var(--sp-6); margin-right:calc(var(--sp-6) * -1);
+  border:0; border-radius:var(--r-sm);
+  background:none; color:var(--fg-disabled); cursor:pointer;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.summary__close:hover{ background:var(--bg-hover); color:var(--fg); }
+.summary__close:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+/* The dismissed end-state. .stage__body has no flex gap — every section carries
+   its own padding — so collapsing height, padding and border to zero is all it
+   takes for the toolbar to move up cleanly. No negative margin needed. */
+.summary.is-dismissed{
+  opacity:0; transform:translateY(-4px);
+  min-height:0; height:0; padding-top:0; padding-bottom:0; border-width:0;
+  pointer-events:none;
+}
+/* `.summary` sets display:flex, which has the same specificity as [hidden] and
+   is declared later — so without this the attribute does nothing and the strip
+   stays in the layout and the a11y tree at zero height. */
+.summary[hidden]{ display:none; }
+
+
+/* ─────────────────────────────────────────────────────────────── TOOLBAR ── */
+.toolbar{
+  position:relative;
+  display:flex; align-items:flex-end; gap:var(--sp-8);
+  padding:var(--sp-9) 0 0;
+  flex:none;
+}
+/* The baseline the active tab's underline sits on. A pseudo-element on the
+   TOOLBAR, not a border on the tab row: the tab row scrolls horizontally at
+   narrow widths, and a border there would scroll away with it. */
+.toolbar::after{
+  content:''; position:absolute; left:0; right:0; bottom:0; height:1px;
+  /* --line, not --line-soft: at 5% white the rule was invisible against the
+     stage, and an invisible baseline gives the inactive tabs nothing to sit on. */
+  background:var(--line);
+}
+.toolbar__tabs{ display:flex; align-items:flex-end; gap:var(--sp-12); min-width:0; overflow-x:auto; }
+.toolbar__tabs::-webkit-scrollbar{ height:0; }
+/* lifted clear of the rule — the tabs sit ON it, the view switch does not */
+.toolbar__views{ display:flex; gap:var(--sp-5); }
+
+
+/* ───────────────────────────────────────────────────────────── TASK CARD ──
+   Five parts in a fixed order: state → title → meta → rule → footer.
+   The footer is pinned to the BOTTOM, not flowed after the meta, so a
+   one-line title and a two-line title still line their actions up across a
+   row. That is the whole reason the card has a fixed height. */
+.card{
+  display:flex; flex-direction:column;
+  min-height:var(--h-card);
+  padding:var(--sp-11) var(--sp-11) var(--sp-9);
+  border:1px solid var(--card-line); border-radius:var(--r-xl);
+  background:var(--card-bg);
+  transition:border-color var(--t) var(--ease), background var(--t) var(--ease),
+             transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.card:hover{
+  border-color:var(--line-strong);
+  background:var(--card-bg-hover);
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-md);
+}
+.card:focus-within{ border-color:var(--accent-line-soft); }
+
+.card__states{ display:flex; align-items:center; gap:var(--sp-4); flex-wrap:wrap; }
+.card__title{
+  /* --sp-7: the status tag is 26px now, not 40, so the old 16px gap left the
+     title floating away from it */
+  margin-top:var(--sp-7);
+  font-size:var(--fs-title); line-height:var(--lh-title);
+  font-weight:var(--fw-medium); letter-spacing:var(--tracking-tight);
+  color:var(--fg);
+}
+.card__meta{ margin-top:var(--sp-3); font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted); }
+.card__rule{ margin-top:var(--sp-9); }
+.card__foot{
+  display:flex; align-items:center; gap:var(--sp-8);
+  margin-top:auto; padding-top:var(--sp-9);
+}
+/* the count is the one number a reviewer scans for, so it sits at the meta's
+   size but near-white — quiet weight, loud value */
+.card__stat{ font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg); }
+.card__foot .btn{ margin-left:auto; min-width:104px; }
+
+/* ── THE WHOLE CARD IS THE TARGET ─────────────────────────────────────────
+   The title's ::after is stretched over the card, so a click anywhere opens
+   the task. Everything else that is interactive has to be lifted above that
+   sheet or it stops being clickable. */
+.card{ position:relative; }
+.card__link{
+  all:unset; cursor:pointer;
+  font:inherit; color:inherit; letter-spacing:inherit;
+}
+.card__link::after{ content:''; position:absolute; inset:0; z-index:0; border-radius:inherit; }
+.card__link:focus-visible{ outline:none; }
+/* focus lands on the title but the RING goes round the card — the hit area and
+   the focus indicator have to describe the same thing */
+.card:has(.card__link:focus-visible){ outline:2px solid var(--line-focus); outline-offset:2px; }
+.card__foot .btn,
+.card__states,
+.card__more{ position:relative; z-index:1; }
+
+/* ── ⋯ MORE ───────────────────────────────────────────────────────────────
+   Grid: parked top-right, optically centred on the status pill. It is chrome,
+   so it stays quiet until the card is hovered or it is focused. */
+.card__more{
+  position:absolute; top:var(--sp-10); right:var(--sp-10);
+  display:grid; place-items:center; width:32px; height:32px;
+  padding:0; border:0; border-radius:var(--r-2xs);
+  background:none; color:var(--fg-muted); cursor:pointer;
+  opacity:0;
+  transition:opacity var(--t) var(--ease), background var(--t) var(--ease),
+             color var(--t) var(--ease);
+}
+.card:hover .card__more,
+.card__more:focus-visible,
+.card__more[aria-expanded="true"]{ opacity:1; }
+.card__more:hover,
+.card__more[aria-expanded="true"]{ background:var(--bg-hover); color:var(--fg); }
+.card__more:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+/* touch has no hover, so on a coarse pointer it is simply always there */
+@media (hover:none){ .card__more{ opacity:1; } }
+
+
+/* ────────────────────────────────────────────────────────────── TASK GRID ── */
+.tasks{ flex:1; min-height:0; overflow-y:auto; padding-top:var(--sp-9); }
+.task-grid{
+  display:grid; gap:var(--grid-gap);
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.task-grid[data-view="list"]{ grid-template-columns:1fr; gap:0; }
+
+/* ── LIST ROWS ────────────────────────────────────────────────────────────
+   A list is not a stack of cards. The row loses its box entirely and is
+   separated by a hairline; the surface only appears on hover, and even then
+   only just — enough to say "this row", not enough to redraw a card. */
+[data-view="list"] .card{
+  min-height:0;
+  padding:var(--sp-9) var(--sp-6);
+  background:none;
+  border:0; border-bottom:1px solid var(--line-divider);
+  border-radius:var(--r-sm);
+  transition:background var(--t) var(--ease);
+}
+[data-view="list"] .card:last-child{ border-bottom:0; }
+[data-view="list"] .card:hover{
+  background:var(--tint-03);
+  transform:none; box-shadow:none;   /* the grid card lifts; a list row does not */
+}
+[data-view="list"] .card:focus-within{ background:var(--tint-04); }
+
+/* Reading order: WHAT it is, then what state it is in. The name and its
+   subtext lead; the status follows as a qualifier. (The grid card keeps the
+   pill on top — there the title has nothing above it to compete with.)
+   The text column has a fixed basis rather than flex:1 so the pills land on
+   one line down the list instead of chasing each title's length. */
+[data-view="list"] .card__body{ display:flex; align-items:center; gap:var(--sp-10); }
+[data-view="list"] .card__text{ order:1; flex:0 1 440px; min-width:180px; }
+[data-view="list"] .card__states{ order:2; flex:none; margin-inline-end:auto; }
+[data-view="list"] .card__foot{ order:3; margin-top:0; padding-top:0; flex:none; }
+[data-view="list"] .card__title{
+  margin-top:0; font-size:var(--fs-body); line-height:var(--lh-body);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+[data-view="list"] .card__meta{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-view="list"] .card__rule{ display:none; }
+/* In a row there is no top-right corner to park in — the ⋯ becomes the last
+   thing in the row, after the action, which is where a row's overflow menu
+   lives in every list that has one. */
+[data-view="list"] .card__more{
+  position:static; order:4; flex:none;
+  margin-inline-start:var(--sp-6);
+}
+
+.tasks__note{
+  padding:var(--sp-10) 0 var(--sp-2);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-faint);
+}
+.tasks__empty{
+  display:none; padding:var(--sp-15) 0;
+  text-align:center; font-size:var(--fs-body-sm); color:var(--fg-muted);
+}
+.tasks.is-empty .task-grid{ display:none; }
+.tasks.is-empty .tasks__empty{ display:block; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TASK DETAIL
+   The screen behind a task card. It reuses the page's existing vocabulary —
+   .pill for state, .select and .field for controls, .btn for actions, .check
+   for selection — and adds only what a list of documents genuinely needs.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────────── PAGE HEAD ──
+   Title, state and the one line of context. The same three parts as a task
+   card's head, in the same order, because it IS that card — opened. */
+.pagehead{
+  display:flex; flex-direction:column;
+  padding:var(--sp-7) 0 var(--sp-9);
+  flex:none;
+}
+/* title and state on one line, the pill optically centred on the title's cap
+   height rather than its box — a 28px pill next to a 32px line box sits low if
+   it is centred on the box */
+.pagehead__row{ display:flex; align-items:center; gap:var(--sp-8); flex-wrap:wrap; }
+/* the way back, when the head owns it instead of the breadcrumb above — bare,
+   like the rest of this build's quiet controls: no border until you reach for
+   it, so it never competes with the title next to it */
+.pagehead__back{
+  display:inline-flex; align-items:center; justify-content:center;
+  flex:none; width:var(--h-control-sm); height:var(--h-control-sm);
+  margin-inline-start:calc(var(--sp-6) * -1);
+  border-radius:var(--r-2xs); color:var(--fg-muted); text-decoration:none;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.pagehead__back:hover{ background:var(--bg-hover); color:var(--fg); }
+.pagehead__back:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+/* whatever the page puts in the state slot — a status pill or a control —
+   sits at the far end of the title's line */
+.pagehead__state{ margin-inline-start:auto; flex:none; }
+.pagehead__title{
+  font-size:var(--fs-display); line-height:var(--lh-display);
+  font-weight:var(--fw-regular); letter-spacing:var(--tracking-tight);
+  color:var(--fg);
+}
+.pagehead__meta{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg-muted);
+}
+/* the page head's pill is a step up from a table cell's: it is the one place a
+   status has to carry across a whole screen */
+.pagehead__state .pill{
+  height:28px; padding:0 var(--sp-6);
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm);
+}
+
+
+/* ──────────────────────────────────────────────────────────── FILTER BAR ──
+   Two controls and the sentence that explains what the automatic sort did.
+   The note is beside the controls rather than under them: it describes the
+   result those controls are filtering, so it has to be readable while you use
+   them, not scrolled past. */
+.filterbar{
+  display:flex; align-items:center; gap:var(--sp-8);
+  padding-bottom:var(--sp-9);
+  flex:none; flex-wrap:wrap;
+}
+/* the type control carries its own count, so it states its effect rather than
+   making you read it off the list below */
+.filterbar__type{ flex:0 0 auto; gap:var(--sp-8); }
+.filterbar__type .select__value{ min-width:0; }
+.filterbar__count{
+  color:var(--fg-muted); font-variant-numeric:tabular-nums;
+  font-size:var(--fs-body-sm);
+}
+.filterbar__search{ flex:1 1 300px; min-width:200px; max-width:420px; }
+.filterbar__showing{
+  flex:none; font-size:var(--fs-body-sm); line-height:var(--lh-body-sm);
+  color:var(--fg-secondary); font-variant-numeric:tabular-nums;
+}
+/* the caption about the automatic sort goes to the far end: it qualifies the
+   whole row rather than any one control in it */
+.filterbar__note{
+  margin-left:auto; text-align:end;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+/* Clear is a text button — it undoes, it does not act, and an outlined control
+   here would read as heavy as the thing it is undoing. */
+.linkbtn{
+  border:0; background:none; padding:0;
+  font-family:var(--font); font-size:var(--fs-body-sm); line-height:var(--lh-body-sm);
+  color:var(--fg-muted); cursor:pointer;
+  border-radius:var(--r-2xs);
+  transition:color var(--t) var(--ease);
+}
+.linkbtn:hover{ color:var(--fg); text-decoration:underline; text-underline-offset:3px; }
+.linkbtn:focus-visible{ outline:2px solid var(--line-focus); outline-offset:3px; }
+.linkbtn:disabled{ color:var(--fg-disabled); pointer-events:none; }
+/* aria-disabled, not the disabled attribute, on anything that still owes a
+   `title` — a truly disabled control cannot be hovered in most browsers, so
+   its reason would never be readable. */
+.linkbtn[aria-disabled="true"]{ color:var(--fg-disabled); cursor:default; }
+.linkbtn[aria-disabled="true"]:hover{ text-decoration:none; }
+
+
+/* ─────────────────────────────────────────────────────────── SELECTION BAR ──
+   Appears only when something is selected, and says two things: how many, and
+   what can be done with them. It sits directly above the table so the count and
+   the rows it counts are never separated. */
+.selbar{
+  display:flex; align-items:center; gap:var(--sp-6);
+  height:56px; padding:0 var(--sp-6) 0 var(--sp-8);
+  margin-bottom:var(--sp-4);
+  border:1px solid var(--accent-line); border-radius:var(--r-2xs);
+  background:var(--accent-wash);
+  flex:none;
+}
+.selbar[hidden]{ display:none; }
+/* a filled tick, not a live checkbox: the rows are already chosen — this states
+   the fact, it does not offer to change it */
+.selbar__mark{
+  display:grid; place-items:center; flex:none;
+  width:20px; height:20px; border-radius:var(--r-2xs);
+  background:var(--accent); color:var(--on-accent);
+}
+.selbar__count{
+  font-size:var(--fs-body); line-height:var(--lh-body);
+  font-weight:var(--fw-medium); color:var(--fg);
+  font-variant-numeric:tabular-nums;
+}
+.selbar__of{
+  font-size:var(--fs-body-sm); color:var(--fg-muted);
+  font-variant-numeric:tabular-nums;
+}
+.selbar__actions{ display:flex; align-items:center; gap:var(--sp-5); margin-inline-start:auto; }
+/* text actions, not buttons: inside a filled band a bordered control would be a
+   box inside a box, and one of these is destructive — it should not look eager */
+.selbar__act{
+  /* inline-flex, or the glyph sits on its own line above the label */
+  display:inline-flex; align-items:center; gap:var(--sp-4);
+  border:0; background:none; padding:var(--sp-3) var(--sp-6);
+  font-family:var(--font); font-size:var(--fs-body-sm); line-height:1;
+  color:var(--fg); cursor:pointer; white-space:nowrap;
+  border-radius:var(--r-xs);
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.selbar__act:hover{ background:var(--tint-06); color:var(--fg); }
+.selbar__act--danger{ color:var(--danger); }
+.selbar__act--danger:hover{ background:var(--danger-wash); color:var(--danger); }
+.selbar__act:focus-visible{ outline:2px solid var(--line-focus); outline-offset:3px; }
+.selbar__act[aria-disabled="true"]{ color:var(--fg-disabled); cursor:default; }
+.selbar__act[aria-disabled="true"]:hover{ background:none; }
+.selbar__close{
+  display:grid; place-items:center; flex:none;
+  width:28px; height:28px; margin-left:var(--sp-4);
+  border:0; border-radius:var(--r-2xs);
+  background:none; color:var(--fg-muted); cursor:pointer;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.selbar__close:hover{ background:var(--tint-06); color:var(--fg); }
+.selbar__close:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+
+
+/* ──────────────────────────────────────────────────────── DOCUMENT TABLE ──
+   A grid, not a <table>: the column track list comes from DOC_COLUMNS, so a
+   column added in data appears here without a template edit. Every row is the
+   same grid, which is what keeps the header and the body in step.
+
+   It is the LIST-ROW treatment from the task grid, not a boxed table — same
+   hairline divider, same hover, so a list of documents and a list of tasks read
+   as the same product. */
+.dtable{ flex:none; }
+.dtable__head,
+.dtable__row{
+  display:grid;
+  grid-template-columns:var(--dtable-cols);
+  align-items:center;
+  gap:var(--sp-8);
+  padding:0 var(--sp-6);
+}
+.dtable__head{
+  /* padding, not a fixed height: a two-word column heading wraps, and a fixed
+     28px row let it overflow into the first data row. */
+  align-items:end;
+  padding-top:var(--sp-4); padding-bottom:var(--sp-5);
+  font-size:var(--fs-micro); line-height:var(--lh-micro);
+  font-weight:var(--fw-medium); letter-spacing:var(--tracking-wide);
+  text-transform:uppercase; color:var(--fg-muted);
+  border-bottom:1px solid var(--line-divider);
+}
+.dtable__head > div{ min-width:0; }
+.dtable__row{
+  min-height:var(--h-row);
+  border-bottom:1px solid var(--line-divider);
+  border-radius:var(--r-sm);
+  transition:background var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.dtable__row:last-of-type{ border-bottom:0; }
+.dtable__row:hover{ background:var(--tint-03); }
+.dtable__row:focus-within{ background:var(--tint-04); }
+/* A selected row is marked by the same violet wash the active nav row uses, so
+   "chosen" looks the same everywhere in the product. The wireframe rings the
+   row; a ring inside a hairline list adds a second border language, and the
+   wash reads at a glance down a long list where a 1px ring does not. */
+/* Selected and hovered are the SAME surface — the tint the task list uses on
+   hover. A violet wash read as a second accent competing with the primary
+   action; the checkbox is what states selection, the surface only groups it. */
+.dtable__row.is-selected,
+.dtable__row.is-selected:hover{ background:var(--tint-03); }
+
+/* CERTIFICATE — checkbox, thumbnail, filename. The filename is the row's
+   identity, so it takes the body colour while everything else steps back. */
+.dtable__cert{ display:flex; align-items:center; gap:var(--sp-6); min-width:0; }
+.dtable__name{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.dtable__cell{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg-secondary);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* a value that is absent is not blank — it says so, quietly */
+.dtable__cell--empty{ color:var(--fg-faint); }
+.dtable__cell--num{ text-align:end; font-variant-numeric:tabular-nums; }
+.dtable__cell--center{ display:flex; justify-content:center; }
+.dtable__note{
+  padding:var(--sp-8) var(--sp-6) 0;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+.dtable__empty{
+  padding:var(--sp-13) var(--sp-6);
+  text-align:center;
+  font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg-muted);
+}
+
+
+/* ──────────────────────────────────────────────────────────────── LOAD MORE ──
+   Centred under the table with the count of what is actually left, and the
+   caption saying where you are in the list. Both are centred because the table
+   above them is a full-width object — a left-aligned control under it reads as
+   belonging to the first column. */
+.loadmore{
+  display:flex; flex-direction:column; align-items:center; gap:var(--sp-8);
+  padding:var(--sp-12) 0 var(--sp-4);
+}
+.loadmore__btn{ gap:var(--sp-5); min-width:220px; }
+.loadmore__note{
+  text-align:center;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-faint);
+}
+
+
+/* ──────────────────────────────────────────────────────────────── RUN BAR ──
+   One row. The estimate states itself on the left; the controls sit right in
+   the order they escalate — a setting, the narrow run, the whole run. It is a
+   panel rather than a rule-and-space, because it is the only block on the page
+   that acts on everything above it. */
+/* The run bar is the page's footer and the ONE thing pinned in the scroll
+   area. Everything above it — the title, the filters, the table head — scrolls
+   away, because the only control an officer needs within reach at row 60 is
+   the one that starts the run. It needs an opaque background and a lip of
+   shadow: rows passing underneath a translucent bar are unreadable. */
+.runbar{
+  position:sticky; bottom:0; z-index:4;
+  display:flex; align-items:center; gap:var(--sp-12);
+  padding:var(--sp-9) var(--sp-10);
+  margin-top:var(--sp-10);
+  border:1px solid var(--card-line); border-radius:var(--r-xl);
+  background:var(--runbar-bg);
+  backdrop-filter:blur(14px) saturate(120%);
+  -webkit-backdrop-filter:blur(14px) saturate(120%);
+  box-shadow:var(--shadow-lg);
+  flex:none; flex-wrap:wrap;
+}
+.runbar__info{ flex:1 1 260px; min-width:200px; }
+.runbar__est{
+  font-size:var(--fs-body); line-height:var(--lh-body);
+  font-weight:var(--fw-medium); color:var(--fg);
+}
+.runbar__sub{
+  margin-top:var(--sp-2);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+.runbar__actions{
+  display:flex; align-items:center; gap:var(--sp-6);
+  margin-left:auto; flex-wrap:wrap;
+}
+/* the notify trigger is a setting, so it is the quietest of the three and
+   carries the count of what is currently switched on */
+.runbar__notify{ gap:var(--sp-5); }
+.runbar__notify .badge{ min-width:20px; height:20px; }
+
+
+/* ──────────────────────────────────────────────────────────────── POPOVER ──
+   One surface for the type list and the notify panel. Fixed to the viewport and
+   rendered on <body>, so neither can be clipped by the scrolling page. */
+.popover{
+  position:fixed; z-index:70;
+  min-width:220px; padding:var(--sp-4);
+  border:1px solid var(--line); border-radius:var(--r-2xs);
+  background:var(--bg-menu); box-shadow:var(--shadow-lg);
+  animation:menu-in var(--t) var(--ease-out);
+}
+@media (prefers-reduced-motion:reduce){ .popover{ animation:none; } }
+.popover--notify{ min-width:280px; padding:var(--sp-8); }
+.popover__title{
+  padding:0 0 var(--sp-6);
+  font-size:var(--fs-micro); line-height:var(--lh-micro);
+  letter-spacing:var(--tracking-wide); text-transform:uppercase;
+  color:var(--fg-muted);
+}
+.popover__rows{ display:flex; flex-direction:column; }
+.popover__row{ padding:var(--sp-5) 0; }
+.popover__row--ruled{ border-top:1px solid var(--line-soft); }
+/* the type list reuses the menu row wholesale — same height, same hover, same
+   focus ring as the card's ⋯ menu, so a list of choices is one thing product-wide */
+.popover--menu .menu__item{ justify-content:flex-start; gap:var(--sp-6); }
+.menu__item-label{ flex:1; }
+.menu__item-count{
+  color:var(--fg-muted); font-variant-numeric:tabular-nums; font-size:var(--fs-caption);
+}
+.menu__item-tick{ display:grid; place-items:center; color:var(--accent-on-dark); }
+.menu__item.is-on{ color:var(--fg); }
+
+.detail{ flex:1; min-height:0; overflow-y:auto; padding-bottom:var(--sp-10); }
+
+/* ─────────────────────────────────────────────────────── MULTISELECT PANEL ──
+   The type filter. Three things make it a multiselect rather than a menu that
+   happens to allow several: a checkbox per row (a tick that appears and
+   disappears cannot show an UNticked option), a count in its own right-hand
+   column so it never shifts as rows are picked, and a panel that stays open
+   while you tick. A field narrows a long list; Clear empties it. */
+.popover--mselect{ min-width:288px; padding:0; }
+
+.mselect__search{
+  display:flex; align-items:center; gap:var(--sp-5);
+  height:36px; padding:0 var(--sp-6);
+  border-bottom:1px solid var(--line-soft);
+}
+.mselect__search .field__icon{ color:var(--fg-muted); flex:none; }
+.mselect__search input{
+  flex:1; min-width:0; height:100%;
+  border:0; outline:none; background:none;
+  font-family:var(--font); font-size:var(--fs-body-sm); color:var(--fg);
+}
+.mselect__search input::placeholder{ color:var(--fg-muted); }
+.mselect__search input::-webkit-search-cancel-button{ display:none; }
+
+.mselect__list{ max-height:264px; overflow-y:auto; padding:var(--sp-4); }
+/* THE GRID IS THE POINT: box · label · count. The count sits in a fixed track
+   at the end, so it stays on one line and holds the same x whatever is ticked. */
+.mselect__opt{
+  display:grid; grid-template-columns:18px 1fr auto; align-items:center;
+  gap:var(--sp-6);
+  width:100%; height:34px; padding:0 var(--sp-5);
+  border:0; border-radius:var(--r-2xs);
+  background:none; color:var(--fg-secondary);
+  font-family:var(--font); font-size:var(--fs-body-sm); line-height:1;
+  text-align:left; cursor:pointer;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.mselect__opt:hover{ background:var(--bg-hover); color:var(--fg); }
+.mselect__opt:focus-visible{ outline:2px solid var(--line-focus); outline-offset:-2px; }
+/* a picked row is washed, not just ticked — the state has to survive a glance */
+.mselect__opt.is-on{ background:var(--accent-wash-soft); color:var(--fg); }
+.mselect__opt .check__box{ pointer-events:none; }
+.mselect__opt.is-on .check__box{ background:var(--accent); border-color:var(--accent); color:var(--on-accent); }
+.mselect__opt.is-on .check__box .icon{ opacity:1; }
+.mselect__label{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mselect__count{
+  color:var(--fg-muted); font-variant-numeric:tabular-nums;
+  font-size:var(--fs-caption);
+}
+.mselect__empty{
+  padding:var(--sp-8) var(--sp-5);
+  font-size:var(--fs-body-sm); color:var(--fg-muted); text-align:center;
+}
+
+.mselect__foot{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-6);
+  height:38px; padding:0 var(--sp-6);
+  border-top:1px solid var(--line-soft);
+}
+.mselect__sel{ font-size:var(--fs-caption); color:var(--fg-muted); font-variant-numeric:tabular-nums; }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DOCUMENT VIEWER
+   ONE component in TWO shells. The drawer and the full-screen view are the
+   same header, the same page stack and the same footer — only the box around
+   them changes. Two separate builds would have drifted the moment either got a
+   control the other did not, which is exactly what "expand this" must never do.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* THE SCRIM BELONGS TO FULL SCREEN ONLY.
+   The drawer is not modal and never was meant to be: with the list still on
+   screen the officer's next move is usually another row, and a scrim answers
+   that by disabling the very thing they were about to click. Dimming was doing
+   the work of differentiation, and differentiation is the panel's own job —
+   its surface, its ring, its shadow.
+
+   Full screen is different. There it takes the whole window on purpose, there
+   is nothing behind worth reaching, and the scrim is what says so. */
+.scrim{
+  position:fixed; inset:0; z-index:60;
+  /* NO blur. It did separate the layers, but it also took the page away — you
+     could not see what you were standing on top of, and losing your place is a
+     worse trade than a busy backdrop. Dimming does the same job and leaves the
+     list readable behind the panel. */
+  background:var(--scrim);
+  opacity:0;
+  transition:opacity var(--t) var(--ease);
+}
+.scrim.is-open{ opacity:1; }
+.scrim[hidden]{ display:none; }
+
+.viewer{
+  position:fixed; z-index:70;
+  display:flex; flex-direction:column; min-height:0;
+  /* the page's own dark, not the tooltip navy it used to borrow. The brand is
+     in the surface itself — a bloom at the top-left corner — rather than
+     painted onto any one control. */
+  background:var(--overlay-bg);
+  border:0;
+  border-radius:var(--r-panel);
+  /* --shadow-overlay, not --shadow-lg: with the blur gone this shadow is the
+     only thing separating a near-black panel from a near-black page, so it is
+     deeper and wider than anything else in the product carries. */
+  box-shadow:var(--shadow-overlay);
+  overflow:hidden;
+  transition:transform var(--t-slow) var(--ease-out), opacity var(--t) var(--ease);
+}
+/* The edge is a masked gradient ring, the same technique the rail and the stage
+   use — brightest violet at the top-left, gone by the bottom-right. A flat
+   border cannot say which way a panel is lit, and this one has to agree with
+   the two panels behind it. */
+.viewer::before{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  padding:1px; pointer-events:none; z-index:2;
+  background:var(--overlay-ring);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask-composite:exclude;
+}
+.viewer[hidden]{ display:none; }
+
+/* ── SHELL 1 · DRAWER — DOCKED, NOT OVERLAID ──────────────────────────────
+   It takes a COLUMN in the shell grid rather than floating over one. The stage
+   narrows, the table reflows into what is left, and nothing is covered: every
+   row stays visible and clickable while a document is open, which is the whole
+   point — click another row and the drawer swaps to it.
+
+   Overlaying, even without a scrim, would still have hidden the institution,
+   country and page columns behind the panel. "Not disabled" is not the same as
+   "not covered", and the officer needs both. */
+.app.has-drawer{ grid-template-columns:auto 1fr var(--drawer-w); }
+.viewer--drawer{
+  position:relative; inset:auto;
+  grid-column:3; width:auto; height:100%; min-height:0;
+}
+/* it arrives by opening the column, so the panel itself only fades */
+.viewer--drawer:not(.is-open){ opacity:0; }
+
+/* ── SHELL 2 · FULL SCREEN ────────────────────────────────────────────────
+   Centred on the WINDOW, not on the work area — the document is the subject
+   now, so it sits in the middle of the screen rather than in the middle of
+   whatever is left beside the rail.
+
+   It is capped: a certificate at 1500px is not more readable, only wider, and
+   the page inside is fitted to height anyway. Everything the cap leaves over
+   is backdrop, and the scrim is what makes that read as behind rather than
+   beside — which is the whole job the blur was doing before it also took the
+   page away. */
+.viewer--full{
+  top:var(--shell-pad-t); bottom:var(--shell-pad-b);
+  left:0; right:0;
+  width:min(1240px, calc(100vw - (var(--shell-pad) * 2)));
+  max-width:none; margin-inline:auto;
+}
+.viewer--full:not(.is-open){ transform:scale(.985); opacity:0; }
+
+/* ── HEAD — what you are looking at ───────────────────────────────────────
+   The name leads, on its own line, at the top of the panel. Everything that
+   qualifies it — type, where it is from, how long it is — sits under it in one
+   muted line, so the title is never competing with its own metadata. */
+.viewer__head{
+  position:relative; z-index:1;
+  display:flex; align-items:flex-start; gap:var(--sp-8);
+  padding:var(--sp-9) var(--sp-10);
+  border-bottom:1px solid var(--line);
+  flex:none;
+}
+.viewer__id{ min-width:0; }
+.viewer__title{
+  font-size:var(--fs-title); line-height:var(--lh-title);
+  font-weight:var(--fw-medium); letter-spacing:var(--tracking-tight);
+  color:var(--fg);
+  overflow-wrap:anywhere;
+}
+.viewer__meta{
+  display:flex; align-items:center; gap:var(--sp-5); flex-wrap:wrap;
+  margin-top:var(--sp-4);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+.viewer__tools{ display:flex; align-items:center; gap:var(--sp-4); margin-left:auto; flex:none; }
+
+/* ── BODY — the pages ─────────────────────────────────────────────────────
+   Recessed against the panel so the pages read as sitting IN the viewer, and
+   scrolling vertically: a multi-page certificate is read down, and left/right
+   is reserved for moving between certificates. */
+.viewer__body{
+  flex:1; min-height:0; overflow-y:auto;
+  display:flex; flex-direction:column; gap:var(--sp-9);
+  padding:var(--sp-10);
+  /* a step DOWN from the panel, so a sheet of paper lies on it rather than
+     floating over it */
+  background:var(--overlay-well);
+  /* the swipe reads horizontal drags; the browser keeps the vertical scroll */
+  touch-action:pan-y;
+}
+.docpage{
+  position:relative;
+  aspect-ratio:1 / 1.414;              /* A4 — the shape a certificate arrives in */
+  border-radius:var(--r-xs);
+  background:var(--paper);
+  box-shadow:var(--shadow-md);
+  overflow:hidden;
+  flex:none;
+}
+.docpage .cert{ display:block; width:100%; height:100%; }
+
+/* ── FOOT — moving between certificates ───────────────────────────────────
+   Not between PAGES: the pages are already all here, stacked. This steps to the
+   next certificate in the list you filtered, so the viewer walks the same set
+   the table is showing. */
+.viewer__foot{
+  position:relative; z-index:1;
+  display:flex; align-items:center; gap:var(--sp-6);
+  padding:var(--sp-7) var(--sp-10);
+  border-top:1px solid var(--line);
+  flex:none;
+}
+.viewer__pos{
+  flex:1; text-align:center;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* FIT TO HEIGHT when full, fit to WIDTH in the drawer. A page is read whole, so
+   in the wide view it is sized by the space available top-to-bottom and centred;
+   filling the width instead put an A4 page ~1980px tall behind a 900px window,
+   which is a page you can only ever see a third of. The narrow drawer is the
+   opposite case — there the width is the constraint, so it fills it and scrolls. */
+.viewer--full .viewer__body{ align-items:center; }
+.viewer--full .docpage{ height:min(74vh, 920px); width:auto; }
+
+/* THE ROW YOU ARE LOOKING AT.
+   With the list still live beside the drawer, "which one is open?" becomes a
+   real question — so the row that is being previewed carries the same violet
+   wash the active nav row does. Same meaning, same treatment. */
+.dtable__row.is-previewing{ background:var(--accent-wash-row); }
+.dtable__row.is-previewing:hover{ background:var(--accent-wash); }
+
+/* the row's thumbnail and filename are ONE control — either opens the preview */
+.dtable__open{
+  display:flex; align-items:center; gap:var(--sp-6);
+  min-width:0; padding:0; border:0; background:none;
+  font-family:var(--font); text-align:left; cursor:pointer;
+  border-radius:var(--r-2xs);
+}
+.dtable__open:hover .dtable__name{ color:var(--fg); text-decoration:underline; text-underline-offset:3px; }
+.dtable__open:hover .thumb{ border-color:var(--line-strong); color:var(--fg-secondary); }
+.dtable__open:focus-visible{ outline:2px solid var(--line-focus); outline-offset:3px; }
+
+/* ── NO ROOM TO DOCK ──────────────────────────────────────────────────────
+   Below this the stage cannot give up 520px and still show a usable table, so
+   the drawer stops being a column and overlays instead — and once it overlays
+   it covers rows, so the scrim comes back with it. The fallback is honest
+   about what it is rather than pretending to dock in a space that isn't there. */
+@media (max-width:1279px){
+  .app.has-drawer{ grid-template-columns:auto 1fr; }
+  .viewer--drawer{
+    position:fixed; grid-column:auto;
+    top:var(--shell-pad-t); right:var(--shell-pad-r); bottom:var(--shell-pad-b);
+    width:min(var(--drawer-w), calc(100vw - var(--sp-13))); height:auto;
+  }
+  .viewer--drawer:not(.is-open){ transform:translateX(calc(100% + var(--shell-pad-r))); opacity:0; }
+}
+
+@media (max-width:620px){
+  /* one shell on a phone: a 520px drawer has nowhere to go, so the preview is
+     always the full sheet */
+  .viewer--drawer,
+  .viewer--full{
+    inset:var(--sp-8); width:auto; max-width:none; margin:0;
+  }
+  .viewer--drawer:not(.is-open){ transform:translateY(var(--sp-10)); opacity:0; }
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE CERTIFICATE ITSELF
+   js/certs.js emits the STRUCTURE — a crest, an institution line, a name, a
+   table of courses — and every colour, face and weight is decided here, from
+   tokens. Nothing about how a document looks lives in JavaScript, which is why
+   a change to the type scale or the paper reaches all 79 of them at once.
+
+   These are SPECIMENS and they say so. The watermark is part of the component,
+   not a flag the caller can pass — a plausible certificate without one is a
+   forgery waiting to be screenshotted out of a prototype.
+   ══════════════════════════════════════════════════════════════════════════ */
+.cert{ font-family:var(--font-doc); }
+.cert text{ fill:var(--paper-ink); }
+
+.c-paper{ fill:var(--paper); }
+.c-frame{ fill:none; stroke:var(--crest); stroke-width:2; opacity:.5; }
+.c-frame-thin{ fill:none; stroke:var(--crest); stroke-width:.6; opacity:.4; }
+
+/* one hue per institution — set on the <svg>, inherited by everything in it */
+.cert--crest1{ --crest:var(--crest-1); }
+.cert--crest2{ --crest:var(--crest-2); }
+.cert--crest3{ --crest:var(--crest-3); }
+.cert--crest4{ --crest:var(--crest-4); }
+.cert--crest5{ --crest:var(--crest-5); }
+
+.c-crest-body{ fill:var(--crest); }
+.c-crest-mark{ fill:var(--paper); }
+
+.c-inst{ font-size:19px; letter-spacing:2.4px; text-anchor:middle; fill:var(--crest); }
+.c-inst--sm{ font-size:13px; letter-spacing:1.2px; text-anchor:start; }
+.c-place{ font-size:9.5px; letter-spacing:2.6px; text-anchor:middle; fill:var(--paper-ink-2); }
+.c-place--l{ text-anchor:start; letter-spacing:1.6px; }
+.c-doctype{ font-family:var(--font-doc-sans); font-size:10px; letter-spacing:2.2px;
+            fill:var(--paper-ink-2); }
+
+.c-lead{ font-size:13px; font-style:italic; text-anchor:middle; fill:var(--paper-ink-2); }
+.c-name{ font-size:31px; text-anchor:middle; fill:var(--paper-ink); }
+.c-body{ font-size:12px; text-anchor:middle; fill:var(--paper-ink-2); }
+.c-award{ font-size:22px; text-anchor:middle; fill:var(--crest); letter-spacing:.6px; }
+.c-field{ font-size:15px; font-style:italic; text-anchor:middle; fill:var(--paper-ink); }
+
+.c-rule{ stroke:var(--crest); stroke-width:1; opacity:.55; }
+.c-rule-faint{ stroke:var(--paper-rule); stroke-width:.7; }
+.c-sigline{ stroke:var(--paper-ink-2); stroke-width:.8; }
+.c-sigrole{ font-family:var(--font-doc-sans); font-size:8.5px; letter-spacing:1.4px;
+            text-anchor:middle; fill:var(--paper-ink-2); }
+.c-serial{ font-family:var(--font-doc-sans); font-size:8px; letter-spacing:1.2px;
+           text-anchor:middle; fill:var(--paper-faint); }
+
+.c-seal-ring{ fill:none; stroke:var(--crest); stroke-width:1.4; opacity:.7; }
+.c-seal-ring--in{ stroke-width:.6; }
+.c-seal-t{ font-family:var(--font-doc-sans); font-size:7.5px; letter-spacing:1.6px;
+           text-anchor:middle; fill:var(--crest); opacity:.85; }
+.c-seal-t--sm{ font-size:6px; opacity:.6; }
+
+/* transcript + supporting pages */
+.c-lbl{ font-family:var(--font-doc-sans); font-size:7.5px; letter-spacing:1.5px;
+        fill:var(--paper-faint); }
+.c-val{ font-size:13px; fill:var(--paper-ink); }
+.c-val--mono,
+.c-cell--mono{ font-family:var(--font-mono); font-size:11px; }
+.c-cell{ font-size:11px; fill:var(--paper-ink); }
+.c-cell--num{ text-anchor:end; font-variant-numeric:tabular-nums; }
+.c-para{ font-size:11.5px; fill:var(--paper-ink-2); }
+.c-foot{ font-family:var(--font-doc-sans); font-size:8px; fill:var(--paper-faint); }
+.c-foot--r{ text-anchor:end; }
+
+/* THE SPECIMEN MARK — the faintest thing on the page, and on every page */
+.c-watermark{
+  font-family:var(--font-doc-sans); font-size:74px; letter-spacing:12px;
+  text-anchor:middle; fill:var(--paper-ink); opacity:.055;
+}
+
+/* ── THE ONE THAT COULD NOT BE READ ───────────────────────────────────────
+   Not a broken template — it is WHY the automatic sort could not name a type,
+   drawn: skewed on the platen, blown out down one edge, nothing squarely
+   captured. The row says "Could not tell" and the page shows you why. */
+.c-blur{ opacity:.42; }
+.c-glare{
+  fill:url(#none); fill:var(--paper); opacity:.34;
+  mix-blend-mode:screen;
+}
+.c-edge{ fill:var(--paper-ink); opacity:.16; }
+
+/* ── ROW ACTION ─────────────────────────────────────────────────────────────
+   One row's own delete. It lives in a track that is always reserved, so the
+   columns do not shift when it fades in — and it is invisible until the row is
+   hovered or something inside it has focus, because a bin on all 74 rows turns
+   a list you are reading into a list of things you might destroy. */
+.dtable__act{ display:grid; place-items:center; }
+.rowdel{
+  display:grid; place-items:center;
+  width:28px; height:28px; padding:0;
+  border:0; border-radius:var(--r-2xs);
+  background:none; color:var(--fg-muted); cursor:pointer;
+  opacity:0;
+  transition:opacity var(--t) var(--ease), background var(--t) var(--ease),
+             color var(--t) var(--ease);
+}
+.dtable__row:hover .rowdel,
+.dtable__row:focus-within .rowdel,
+.rowdel:focus-visible{ opacity:1; }
+.rowdel:hover{ background:var(--danger-wash); color:var(--danger); }
+.rowdel:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+/* touch has no hover — there, it is simply always there */
+@media (hover:none){ .rowdel{ opacity:1; } }
+
+/* the destructive action in the selection band: text, red, never a filled
+   button — it should not look more inviting than the safe one beside it */
+.selbar__act--danger{ display:inline-flex; align-items:center; gap:var(--sp-4); color:var(--danger); }
+.selbar__act--danger:hover{ color:var(--danger); }
+
+
+/* ─────────────────────────────────────────────────────────────────── TOAST ──
+   Top centre, 24px down, in the TOP LAYER via `popover` — see js/shell.js for
+   why a z-index cannot do this job. The host is only a stack; each toast is its
+   own card so several can sit at once. */
+.toasts{
+  position:fixed; inset:auto; top:var(--sp-10); left:50%;
+  translate:-50% 0;
+  display:flex; flex-direction:column; gap:var(--sp-4);
+  width:max-content; max-width:min(520px, calc(100vw - var(--sp-12)));
+  margin:0; padding:0; border:0; background:none; overflow:visible;
+}
+.toasts:popover-open{ display:flex; }
+
+.toast{
+  display:flex; align-items:center; gap:var(--sp-6);
+  padding:var(--sp-6) var(--sp-8);
+  border:1px solid var(--line-soft); border-radius:var(--r-md);
+  background:var(--bg-menu); box-shadow:var(--shadow-overlay);
+  pointer-events:auto;
+  opacity:0; translate:0 -8px; scale:.98;
+  transition:opacity var(--t) var(--ease), translate var(--t) var(--ease-out), scale var(--t) var(--ease-out);
+}
+.toast.is-in { opacity:1; translate:0 0; scale:1; }
+.toast.is-out{ opacity:0; translate:0 -8px; scale:.98; }
+.toast__icon{ display:grid; place-items:center; flex:none; color:var(--fg-muted); }
+.toast__text{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg);
+}
+.toast__undo{
+  flex:none; border:0; background:none;
+  padding:var(--sp-3) var(--sp-5); border-radius:var(--r-2xs);
+  font-family:var(--font); font-size:var(--fs-body-sm); font-weight:var(--fw-medium);
+  color:var(--accent-on-dark); cursor:pointer;
+  transition:background var(--t) var(--ease);
+}
+.toast__undo:hover{ background:var(--accent-wash-soft); }
+.toast__undo:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+
+/* tone is carried by the ICON, not the surface: four toasts in a row have to
+   read as one system, and a red card for every removal is a room full of alarms */
+.toast--success .toast__icon{ color:var(--success); }
+.toast--danger  .toast__icon{ color:var(--danger); }
+.toast--info    .toast__icon{ color:var(--info); }
+
+@media (prefers-reduced-motion:reduce){ .toast{ transition:none; } }
+
+
+/* ──────────────────────────────────────────────────────────── TYPE BAR ──
+   One row: the chips that both describe and filter the pile, and the caption
+   that says where those labels came from. It replaced a select + Clear link +
+   right-aligned footnote, which were three controls stating one fact. */
+.typebar{
+  display:flex; align-items:center; gap:var(--sp-10);
+  flex-wrap:wrap;
+  padding:var(--sp-9) 0 var(--sp-8);
+}
+.typebar__chips{ display:flex; align-items:center; gap:var(--sp-5); flex-wrap:wrap; min-width:0; }
+/* Everything that is NOT a chip lives on the right, as one group — "Add more
+   files" and Sort only exist in the `new` body, and either way the group as a
+   whole is what pushes itself to the far end, not each piece separately. */
+.typebar__end{
+  display:flex; align-items:center; gap:var(--sp-8);
+  margin-inline-start:auto; flex:none;
+}
+.typebar__ctrls{ display:flex; align-items:center; gap:var(--sp-6); }
+
+/* The search rides the TITLE line and is centred against it, so its midline
+   and the title's agree however tall the title runs. */
+.pagehead__row{ align-items:center; }
+.pagehead__search{ width:320px; height:38px; margin-inline-start:auto; flex:none; }
+/* The search's own auto margin already claims the row's leftover space — the
+   state pill keeping its base rule's auto margin too just splits that gap in
+   two, stranding the pill between title and search instead of beside the
+   title, which is where task.html's own comment says it has to sit. */
+#taskState{ margin-inline-start:0; }
+
+/* ───────────────────────────────────────────────────────────────── DIALOG ──
+   A native <dialog> opened with showModal(). The platform owns the focus trap,
+   Esc, the inertness of the page behind and the top layer — all of which a
+   hand-rolled overlay gets subtly wrong. This file only dresses it. */
+.dialog{
+  padding:0; border:0; background:none;
+  max-width:min(420px, calc(100vw - var(--sp-12)));
+}
+.dialog::backdrop{
+  background:rgba(4,8,22,.62);
+  backdrop-filter:blur(2px);
+}
+.dialog__box{
+  padding:var(--sp-10);
+  border:1px solid var(--line); border-radius:var(--r-xl);
+  background:var(--bg-menu); box-shadow:var(--shadow-lg);
+}
+/* Treatment A — the badge sits WITH the title, so the kind of question is read
+   before the question is. It is 40px and tinted by meaning, not filled with the
+   solid danger: a red block at the top of a dialog that is already offering a
+   red button says the same thing twice, louder. */
+.dialog__head{ display:flex; align-items:flex-start; gap:var(--sp-7); }
+.dialog__text{ min-width:0; }
+.dialog__icon{
+  display:grid; place-items:center; flex:none;
+  width:40px; height:40px; border-radius:var(--r-md);
+}
+.dialog__icon--danger{ background:var(--tag-late-bg); color:var(--danger); }
+.dialog__title{
+  font-size:var(--fs-title); line-height:var(--lh-title);
+  font-weight:var(--fw-medium); color:var(--fg);
+}
+.dialog__body{
+  margin-top:var(--sp-5);
+  font-size:var(--fs-body-sm); line-height:1.55; color:var(--fg-muted);
+}
+.dialog__body b{ font-weight:var(--fw-medium); color:var(--fg); word-break:break-all; }
+/* the safe action first in the DOM so it takes focus and Enter, the
+   destructive one last where the eye lands after reading */
+.dialog__actions{
+  display:flex; justify-content:flex-end; gap:var(--sp-5);
+  margin-top:var(--sp-10);
+}
+.dialog__actions .btn{ height:var(--h-control); }
+@media (prefers-reduced-motion:no-preference){
+  .dialog[open]{ animation:dialog-in var(--t) var(--ease-out); }
+  @keyframes dialog-in{ from{ opacity:0; transform:translateY(-6px) scale(.98); } }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE CHECKING RUN
+   The screen behind "Start checking". It is a WATCHING screen, so its whole
+   job is to answer three questions without being read: how far along is this,
+   what has it found, and can I start yet.
+
+   Everything here is assembled from parts that already exist — .card for the
+   panels, .pill for the severities, .dtable for the list, .btn for the
+   actions, the shared viewer for "Open". The only genuinely new pieces are the
+   bar, the five-step tracker and the live strip, because nothing in the
+   product had to express "still running" before.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.run{ flex:1; min-height:0; overflow-y:auto; padding-bottom:var(--sp-10); }
+
+/* ── THE MONITOR ──────────────────────────────────────────────────────────
+   State, count and time remaining on one line, the bar under it, the five
+   checks under that. Read top to bottom it is: what is happening, how far,
+   and where exactly. */
+.monitor{
+  padding:var(--sp-10) var(--sp-11);
+  border:1px solid var(--card-line); border-radius:var(--r-xl);
+  background:var(--card-bg);
+  flex:none;
+}
+.monitor__top{
+  display:flex; align-items:center; gap:var(--sp-8);
+  margin-bottom:var(--sp-9); flex-wrap:wrap;
+}
+.monitor__count{
+  font-size:var(--fs-display); line-height:var(--lh-display);
+  font-weight:var(--fw-regular); letter-spacing:var(--tracking-tight);
+  color:var(--fg); font-variant-numeric:tabular-nums;
+}
+.monitor__left{
+  margin-inline-start:auto;
+  font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg-muted);
+  white-space:nowrap;
+}
+.monitor__steps{ margin-top:var(--sp-9); }
+.monitor__note{
+  margin-top:var(--sp-8);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+/* the button that replaces the bar once there is nothing left to track */
+.monitor__cta{ margin-inline-start:auto; flex:none; }
+
+/* ── THE FINISHED SUMMARY ─────────────────────────────────────────────────
+   The same box, reporting what came out instead of how far along it is: three
+   figures side by side, divided rather than stacked, because they are read as
+   one sentence — cleared, need you, set aside, adding to the whole 74. */
+.monitor__summary{
+  display:flex; flex-wrap:wrap;
+  gap:var(--sp-11);
+  margin-top:var(--sp-9); padding-top:var(--sp-9);
+  border-top:1px solid var(--line-soft);
+}
+.monitor__figure{
+  display:flex; flex-direction:column; gap:var(--sp-2);
+  padding-inline-end:var(--sp-11);
+  border-inline-end:1px solid var(--line-soft);
+}
+.monitor__figure:last-child{ border-inline-end:0; padding-inline-end:0; }
+.monitor__figure-n{
+  font-size:var(--fs-display); line-height:1; font-weight:var(--fw-regular); color:var(--fg);
+}
+.monitor__figure-label{ font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg); }
+.monitor__figure-note{ font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted); }
+
+/* ── THE LIST HEAD ────────────────────────────────────────────────────────
+   One full-width list — severity is a FILTER on it, not a second table living
+   beside it in a panel. Totals used to sit in an aside read once and forgotten;
+   now they are the chips that get the officer to the rows she wants. */
+.found{ margin-top:var(--sp-10); }
+/* task.html's own tab strip — the same `.revtabs`/`.tab` the review screen's
+   panel uses, standalone in the page rather than inside a bordered card, so
+   it needs the page's own vertical rhythm instead of the panel's padding. */
+#bodyTabs.revtabs{ margin-top:var(--sp-10); padding-inline:0; }
+.found__head{
+  display:flex; align-items:flex-end; gap:var(--sp-8);
+  margin-bottom:var(--sp-8); flex-wrap:wrap;
+}
+.found__lead{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg-muted);
+}
+.found__act{ margin-inline-start:auto; flex:none; }
+/* the finished state's reassurance, in the same slot "Review these N" used to
+   sit in — that action moved into the monitor box, so this is what remains */
+.found__done-note{
+  margin-inline-start:auto; flex:none;
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg-muted);
+}
+
+/* ── FILTER CHIPS ──────────────────────────────────────────────────────────
+   "Needs you" is every row the same as no filter at all; the rest narrow it.
+   Bare outline until picked, same restraint as the rail's theme switch — a
+   filter chip is a control the officer reaches for constantly, not a state
+   the page is announcing, so it does not fight for attention while resting. */
+.chips{
+  display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-6);
+  margin-bottom:var(--sp-9);
+}
+.chip{
+  display:inline-flex; align-items:center; gap:var(--sp-5);
+  height:var(--h-control-sm); padding:0 var(--sp-8);
+  border:1px solid var(--line); border-radius:var(--r-full);
+  background:none; color:var(--fg-secondary);
+  font-family:var(--font); font-size:var(--fs-body-sm); line-height:1; font-weight:var(--fw-medium);
+  cursor:pointer;
+  transition:background var(--t) var(--ease), border-color var(--t) var(--ease), color var(--t) var(--ease);
+}
+.chip:hover{ border-color:var(--line-strong); color:var(--fg); }
+.chip:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+.chip__dot{ width:7px; height:7px; border-radius:var(--r-full); flex:none; }
+.chip__dot--forged{ background:var(--tag-late-fg); }
+.chip__dot--suspicious{ background:var(--tag-pending-fg); }
+.chip__dot--minor,
+.chip__dot--aside{ background:var(--fg-muted); }
+.chip__count{ color:var(--fg-muted); font-variant-numeric:tabular-nums; }
+.chip.is-selected{ border-color:transparent; background:var(--accent); color:var(--on-accent); }
+.chip.is-selected .chip__count{ color:rgba(255,255,255,.72); }
+
+/* ── THE LIVE STRIP ───────────────────────────────────────────────────────
+   THE LIST DOES NOT MOVE ON ITS OWN. A queue that re-sorts under the cursor
+   while you are reading it is unusable, so new findings queue up here and the
+   officer decides when to take them. The strip is the only thing on the page
+   that changes without being asked. */
+.live{
+  display:flex; align-items:center; gap:var(--sp-6);
+  padding:var(--sp-6) var(--sp-9);
+  margin-bottom:var(--sp-8);
+  border:1px solid var(--accent-line-soft); border-radius:var(--r-lg);
+  background:var(--accent-wash-soft);
+  flex-wrap:wrap;
+}
+.live[hidden]{ display:none; }
+.live__dot{
+  width:8px; height:8px; border-radius:var(--r-full); flex:none;
+  background:var(--accent);
+  animation:live-pulse 1.6s var(--ease) infinite;
+}
+@media (prefers-reduced-motion:reduce){ .live__dot{ animation:none; } }
+@keyframes live-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+.live__text{ font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg); }
+.live__note{
+  margin-inline-start:auto;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+
+/* ── THE FINDINGS TABLE ───────────────────────────────────────────────────
+   The same .dtable the certificate list uses — same divider, same hover, same
+   row height. A second table language on the next screen along would be the
+   fastest way to make two pages look like two products. */
+.found .dtable__row{ cursor:default; }
+/* the one exception — a problem row opens the certificate on a click
+   anywhere in it now, so it earns the pointer the rest of `.found` deliberately
+   does not */
+.found .dtable__row[data-openreview]{ cursor:pointer; }
+.found__why{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg-secondary);
+  overflow:hidden; text-overflow:ellipsis;
+}
+.found__sev{ display:flex; flex-direction:column; align-items:flex-start; gap:var(--sp-3); }
+.found__open{ display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:var(--sp-6); }
+/* what "Check again" found, once there is a decision on record — a plain
+   reaffirmation reads quiet and muted; a disagreement between what a person
+   decided and what a recheck says is the one thing on this row that has to
+   read as a problem, not a footnote. */
+.found__decision{
+  display:inline-flex; align-items:center; gap:var(--sp-3);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+.found__decision svg{ flex:none; }
+.found__decision--conflict{ color:var(--tag-late-fg); font-weight:var(--fw-medium); }
+
+/* shared with the review screen's side panel — a small-caps section label
+   with no card of its own to sit in here */
+.panel__title{
+  display:block; margin-bottom:var(--sp-8);
+  font-size:var(--fs-micro); line-height:var(--lh-micro);
+  font-weight:var(--fw-medium); letter-spacing:var(--tracking-wide);
+  text-transform:uppercase; color:var(--fg-muted);
+}
+
+/* the set-aside row's own confirmation, right in its own action cell — not a
+   toast that vanishes before the officer reads it, and not a re-clickable
+   control once the ask has already gone out */
+.aside-act__done{
+  display:inline-flex; align-items:center; gap:var(--sp-3);
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--success);
+}
+.aside-act__done svg{ flex:none; }
+
+.run__leave{
+  margin-top:var(--sp-12); padding-top:var(--sp-9);
+  border-top:1px solid var(--line-soft);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+
+@media (max-width:900px){
+  .steps{ grid-auto-flow:row; gap:var(--sp-6); }
+  .steps__item::after{ display:none; }
+  /* the dividers read as a stray line once the figures stack instead of
+     sitting side by side */
+  .monitor__summary{ flex-direction:column; gap:var(--sp-8); }
+  .monitor__figure{ border-inline-end:0; padding-inline-end:0; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   NEW VERIFICATION
+   Rebuilt as three states rather than one screen wearing every state's chrome
+   at once. Before this it showed an empty "what you have added" panel, a name
+   field pre-filled beside a list with nothing in it, and a bottom bar whose
+   only job was to announce "nothing to create yet" — three pieces of chrome
+   reporting the same absence. The rule now: the page shows only what the
+   current moment needs, and each state removes what the one before it needed
+   and this one does not.
+
+     1 — before anything is added: one drop zone, at the size it deserves when
+         it is the only thing to do, and a three-step legend that answers
+         "what happens if I drop something here" then disappears once she has.
+     2 — files added: the drop zone has collapsed to a dashed "Add more files"
+         button beside the name — she has used it once and does not need 236
+         pixels offering to do it again. The bottom bar states what WILL
+         happen, not what is missing, and the button is live from the moment
+         there is something to create.
+     3 — everything in state 2, plus an amber notice and a STATUS column that
+         exist only while at least one file was refused. Failures stay in the
+         list with a reason rather than vanishing silently — a file that
+         disappears on the way in is a certificate nobody knows is missing.
+
+   It borrows the page head from the task screen (`.pagehead`) and the sticky
+   footer from both other detail screens (`.runbar`); only what state 1 alone
+   needs (the drop zone, the format row) and what the list itself needs (the
+   name row, the notice, the file table) are new here.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.newtask{ flex:1; min-height:0; overflow-y:auto; padding-bottom:var(--sp-10); }
+
+/* `.dropzone`, `.runbar`, `.notice` and `.formatrow` all declare their own
+   `display`, which — same origin, equal-or-higher specificity, declared after
+   the UA sheet — beats the browser's own `[hidden]{display:none}` outright.
+   Setting the `hidden` PROPERTY from JS then does nothing: the element sits
+   there, invisible to nothing. `.summary` above needed the identical fix for
+   the identical reason; four components on one page hitting the same trap is
+   the trap, not four coincidences — any component that sets its own `display`
+   and is ever toggled by the `hidden` property belongs on this list. */
+.dropzone[hidden],
+.runbar[hidden],
+.notice[hidden],
+.formatrow[hidden]{ display:none; }
+
+/* the running count beside the title, replacing the drop zone's promise once
+   there is something real to count. Same row as the title — `.pagehead__row`
+   is already a flex line, so this only has to push itself to the far end. */
+.pagehead__count{
+  margin-inline-start:auto; flex:none;
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg-muted);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+
+/* ─────────────────────────────────────────────────────────────── DROP ZONE ──
+   STATE 1 ONLY. Dashed, because a dashed edge is the one border convention
+   that already means "put something here" in this product — it is used
+   nowhere else, so it never has to compete with a real boundary for that
+   meaning.
+
+   The surface is a tint rather than a card: this is a HOLE the page is
+   offering, not an object sitting on it — a filled card with a shadow reads
+   as something already there rather than something waiting. */
+.dropzone{
+  position:relative;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:var(--sp-3);
+  min-height:var(--h-drop); padding:var(--sp-12) var(--sp-10);
+  border:1px dashed var(--line-strong); border-radius:var(--r-xl);
+  background:var(--tint-03);
+  text-align:center;
+  cursor:pointer;
+  flex:none;
+  transition:border-color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.dropzone:hover{ border-color:var(--accent-line-soft); background:var(--tint-04); }
+
+/* DRAGGING — the whole page is the target throughout every state, so this has
+   to be legible from the far corner of the screen, not just from inside the
+   box. Accent edge, accent wash, and the tile fills: three things change at
+   once because the pointer is nowhere near any of them. */
+.dropzone.is-over{
+  border-color:var(--accent-line); border-style:solid;
+  background:var(--accent-wash-soft);
+}
+.dropzone.is-over .dropzone__tile{
+  background:var(--accent); border-color:transparent; color:var(--on-accent);
+  transform:translateY(-2px);
+}
+.dropzone__tile{
+  display:grid; place-items:center; flex:none;
+  width:var(--h-drop-tile); height:var(--h-drop-tile);
+  margin-bottom:var(--sp-6);
+  border:1px solid var(--line); border-radius:var(--r-md);
+  background:var(--bg-control); color:var(--fg-secondary);
+  transition:background var(--t) var(--ease), color var(--t) var(--ease),
+             border-color var(--t) var(--ease), transform var(--t) var(--ease-out);
+}
+/* UPLOADING — the same "ring that breathes" the sticky live panel uses for
+   "still running" (see .livepanel__icon--live above), not a spinner that
+   spins: one motion language for "working" everywhere it appears. */
+.dropzone__tile--live{ position:relative; border-color:var(--accent-line-soft); }
+.dropzone__tile--live::after{
+  content:''; position:absolute; inset:-1px; border-radius:inherit;
+  border:1px solid var(--accent);
+  animation:step-pulse 1.9s var(--ease-out) infinite;
+}
+@media (prefers-reduced-motion:reduce){ .dropzone__tile--live::after{ animation:none; } }
+.dropzone__progress{ width:100%; max-width:360px; margin-top:var(--sp-8); }
+
+.dropzone__title{
+  font-size:var(--fs-title); line-height:var(--lh-title);
+  font-weight:var(--fw-medium); letter-spacing:var(--tracking-tight);
+  color:var(--fg);
+}
+/* what the headline promises, spelled out — a second line rather than one
+   sentence trying to be both the invitation and the explanation */
+.dropzone__sub{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg-muted);
+}
+/* Browse is a real BUTTON now (see .ordivider below for why) — this class
+   stays only for the caption underneath the format row, which wants the
+   same quiet, small treatment "PDF, JPG, PNG…" always had. */
+.dropzone__kinds{
+  margin-top:var(--sp-7);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-faint);
+  text-align:center;
+}
+
+/* ─────────────────────────────────────────────────────────── OR DIVIDER ──
+   Splits "drop it" from "go find it yourself" — the two are different
+   amounts of effort, and a bare button under the headline made them read as
+   the same offer twice. Real rules either side, not a border trick: at the
+   width this sits in, a line has to visibly connect to the button beyond it
+   or it reads as a stray stroke rather than a divider. */
+.ordivider{
+  display:flex; align-items:center; gap:var(--sp-8);
+  width:100%; max-width:360px;
+  margin:var(--sp-9) 0;
+}
+.ordivider__line{ flex:1; height:1px; background:var(--line); }
+.ordivider__label{
+  flex:none;
+  font-size:var(--fs-caption); line-height:1; color:var(--fg-faint);
+}
+
+/* ────────────────────────────────────────────────────────── FORMAT ROW ──
+   Every accepted shape, named once each rather than folded into one dense
+   sentence of extensions. Each icon is the SAME glyph the file row uses for
+   that kind (js/data.js's NEW_TASK.kinds), so the format promised here and
+   the icon that lands in the list below it are never two different pictures
+   for the same fact. */
+.formatrow{
+  display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
+  gap:var(--sp-7);
+  margin-top:var(--sp-10);
+}
+.formatrow__item{ display:flex; align-items:center; gap:var(--sp-4); }
+.formatrow__item .icon{ color:var(--fg-faint); }
+.formatrow__label{
+  font-size:var(--fs-caption); font-weight:var(--fw-medium); color:var(--fg-secondary);
+}
+.formatrow__sep{ width:1px; height:16px; flex:none; background:var(--line); }
+
+/* The one fact state 1 has not said elsewhere on the same screen — that a
+   container is opened rather than counted as itself. Plain text, in the SAME
+   box as the button above it: it was a bordered banner of its own at first,
+   which read as a second thing to read rather than one more line of the same
+   offer, so it dropped down to the same quiet treatment `.dropzone__sub` and
+   `.dropzone__kinds` already use. */
+.dropzone__tip{
+  display:flex; align-items:center; gap:var(--sp-4);
+  margin-top:var(--sp-9);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-faint);
+}
+.dropzone__tip .icon{ flex:none; color:var(--fg-disabled); }
+
+/* Dragging while the zone is gone (states 2/3) — the compact page still needs
+   the same affordance the big box gave state 1, so the whole content column
+   takes a soft accent ring instead. */
+.newtask.is-dragging{
+  outline:1px dashed var(--accent-line);
+  outline-offset:8px;
+  border-radius:var(--r-xl);
+}
+
+/* ──────────────────────────────────────────────────────────────── NAME ROW ──
+   STATES 2 AND 3. The field, its helper, and "Add more files" on one line —
+   not a card, not a rail. The label sits on its own line above, the way every
+   other labelled field in the product does; the row below is the three things
+   that share its baseline. */
+.namesection{ padding:var(--sp-9) 0 var(--sp-8); flex:none; }
+.namerow{
+  display:flex; align-items:center; gap:var(--sp-8); flex-wrap:wrap;
+}
+.namerow__field{ flex:0 0 420px; max-width:100%; }
+.namerow__hint{
+  flex:1 1 160px; min-width:140px;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+.namerow__add{ margin-inline-start:auto; flex:none; }
+
+
+/* ─────────────────────────────────────────────────────────────── FILE TABLE ──
+   STATES 2 AND 3. The LIST-ROW treatment the certificate table uses — same
+   hairline divider, same hover, same 52px floor — so the pile being built on
+   the way in and the list read on the way out are one language.
+
+   The STATUS column does not exist until it has something to say: a column
+   header sitting over nothing but blank space in the all-clear state is chrome
+   answering a question nobody asked. `--filetable-cols` is set from JS, so the
+   head and every row reflow from the one place that decides the shape. */
+.filetable{ flex:none; }
+.filetable__head,
+.filetable__row{
+  display:grid;
+  grid-template-columns:var(--filetable-cols);
+  align-items:center;
+  gap:var(--sp-6);
+  padding:0 var(--sp-6);
+}
+.filetable__head{
+  padding-top:var(--sp-4); padding-bottom:var(--sp-5);
+  font-size:var(--fs-micro); line-height:var(--lh-micro);
+  font-weight:var(--fw-medium); letter-spacing:var(--tracking-wide);
+  text-transform:uppercase; color:var(--fg-muted);
+  border-bottom:1px solid var(--line-divider);
+}
+.filetable__row{
+  min-height:var(--h-row);
+  border-bottom:1px solid var(--line-divider);
+  border-radius:var(--r-sm);
+  transition:background var(--t) var(--ease);
+}
+.filetable__row:last-of-type{ border-bottom:0; }
+.filetable__row:hover{ background:var(--tint-03); }
+
+/* REFUSED — the row keeps its place and carries a reason rather than
+   vanishing. The wash is the SAME amber the notice above the table uses, so
+   "why is this row tinted" reads off the banner it belongs to without a
+   second look. */
+.filetable__row.is-warn{ background:var(--tag-pending-bg); }
+.filetable__row.is-warn:hover{ background:var(--tag-pending-bg); }
+.filetable__row.is-warn .filetable__icon{ color:var(--tag-pending-fg); }
+.filetable__row.is-warn .filetable__name{ color:var(--fg-secondary); }
+
+.filetable__cert{ display:flex; align-items:center; gap:var(--sp-6); min-width:0; }
+.filetable__icon{ flex:none; color:var(--fg-faint); }
+.filetable__name{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.filetable__size{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm);
+  color:var(--fg-muted); font-variant-numeric:tabular-nums; text-align:end;
+}
+.filetable__status{ display:flex; align-items:center; }
+
+/* the row's own remove — ALWAYS visible, unlike the bin on a certificate row.
+   There it is hidden until hover because a list of 74 things you might
+   destroy is not a list you can read; here taking something back OUT is the
+   whole reason the list exists, and a control you have to hover to discover
+   hides the point of the screen. */
+.filetable .rowdel{ opacity:1; color:var(--fg-faint); }
+.filetable__row:hover .rowdel{ color:var(--fg-muted); }
+.filetable .rowdel:hover{ background:var(--danger-wash); color:var(--danger); }
+
+/* the preview footer — "…and 12 more · Show all 18" — an expando rather than
+   an internally-scrolling panel, so the page never hides a file behind a
+   scrollbar the officer has to find first */
+.filetable__more{
+  display:flex; align-items:baseline; gap:var(--sp-6);
+  padding:var(--sp-8) var(--sp-6) 0;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-faint);
+}
+
+
+/* ──────────────────────────────────────────────────────────── RUN BAR SUB ──
+   The two lines the run bar carries here are shorter than the checking
+   screen's estimate, so nothing new is needed beyond `.runbar` itself — see
+   organisms.css's existing RUN BAR block, reused as-is for both the docked
+   footer and its two sentence variants (clean / some refused). */
+
+
+@media (max-width:900px){
+  .namerow__field{ flex-basis:100%; }
+  .namerow__add{ margin-inline-start:0; }
+}
+@media (max-width:620px){
+  :root{ --h-drop:168px; --h-drop-tile:48px; }
+  .dropzone{ padding:var(--sp-10) var(--sp-8); }
+  .dropzone__title{ font-size:var(--fs-body); line-height:var(--lh-body); }
+  /* SIZE sheds first, same rule the certificate table narrows by: the name is
+     what she is scanning for and STATUS is why the row is there at all, so
+     between the three, size is what a phone gives up. `data-bad` carries
+     whether STATUS exists — CSS cannot ask the grid that, and the two shrunk
+     templates need a different track count. `!important` because a custom
+     property set inline from JS otherwise wins on specificity alone. */
+  .filetable[data-bad="1"]{ --filetable-cols:minmax(0,1fr) 132px 28px !important; }
+  .filetable:not([data-bad="1"]){ --filetable-cols:minmax(0,1fr) 28px !important; }
+  .filetable__head > :nth-child(2),
+  .filetable__row  > :nth-child(2){ display:none; }
+  .notice{ flex-direction:column; align-items:flex-start; }
+  .notice__act{ margin-inline-start:0; }
+  /* a divider between two items on DIFFERENT wrapped rows reads as a stray
+     mark attached to neither — once the row wraps, the gap alone is enough */
+  .formatrow__sep{ display:none; }
+  .formatrow{ gap:var(--sp-8) var(--sp-9); }
+  .ordivider{ max-width:none; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE VERIFICATION DRAWER
+   The same three-state screen `new.html` is, rebuilt to overlay My tasks
+   instead of replacing it. It floats on a scrim and docks to the right edge —
+   NOT a grid column like the document viewer's drawer. That one shares its
+   width with a list she is actively cross-referencing; this one is a task
+   she steps away to compose and then either commits or discards, and there is
+   nothing behind it worth keeping visible while she does.
+   ══════════════════════════════════════════════════════════════════════════ */
+.verifydrawer{
+  position:fixed; z-index:70;
+  top:var(--shell-pad-t); right:var(--shell-pad-r); bottom:var(--shell-pad-b);
+  width:min(var(--verify-drawer-w), calc(100vw - var(--sp-13)));
+  display:flex; flex-direction:column; min-height:0;
+  background:var(--overlay-bg);
+  border:0; border-radius:var(--r-panel);
+  box-shadow:var(--shadow-overlay);
+  overflow:hidden;
+  transform:translateX(calc(100% + var(--shell-pad-r)));
+  transition:transform var(--t-slow) var(--ease-out);
+}
+.verifydrawer.is-open{ transform:translateX(0); }
+.verifydrawer:not(.is-open){ pointer-events:none; }
+/* the same masked-gradient ring the stage and the document viewer use, so a
+   panel that floats above the page is still lit from the same corner
+   everything else in the product is */
+.verifydrawer::before{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  padding:1px; pointer-events:none; z-index:2;
+  background:var(--overlay-ring);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask-composite:exclude;
+}
+
+.verifydrawer__head{
+  position:relative; z-index:1;
+  display:flex; align-items:flex-start; gap:var(--sp-8);
+  padding:var(--sp-9) var(--sp-10) 0;
+  flex:none;
+}
+.verifydrawer__headtext{ min-width:0; flex:1; }
+.verifydrawer__title{
+  font-size:var(--fs-title); line-height:var(--lh-title);
+  font-weight:var(--fw-medium); color:var(--fg);
+}
+.verifydrawer__meta{
+  display:block; margin-top:var(--sp-2);
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+  font-variant-numeric:tabular-nums;
+}
+.verifydrawer__subtitle{
+  margin:var(--sp-3) var(--sp-10) 0;
+  font-size:var(--fs-body-sm); line-height:1.5; color:var(--fg-muted);
+}
+.verifydrawer__subtitle[hidden]{ display:none; }
+
+.verifydrawer__body{
+  position:relative; z-index:1;
+  flex:1; min-height:0; overflow-y:auto;
+  display:flex; flex-direction:column;
+  padding:var(--sp-9) var(--sp-10) var(--sp-10);
+}
+
+/* At drawer width the name-field-plus-button row runs out of room before its
+   content does — the drawer's own narrower layout for the exact same
+   component the full page uses unmodified. */
+.namerow--stack{ flex-direction:column; align-items:stretch; gap:var(--sp-5); }
+.namerow--stack .namerow__field{ flex:none; width:100%; }
+.namerow--stack .namerow__hint{ flex:none; }
+.namerow--stack .namerow__add{ margin-inline-start:0; align-self:flex-start; }
+
+/* The runbar is normally a PAGE's sticky footer, floating over a much taller
+   scroll region. Inside the drawer it is simply the last flex row in a much
+   shorter column, so the stickiness and the elevation it needed to separate
+   itself from scrolling content underneath are both switched off — the
+   drawer's own edge already does that job. */
+.verifydrawer .runbar{
+  position:static; z-index:auto;
+  margin:0; border-radius:0;
+  border-left:0; border-right:0; border-bottom:0;
+  background:var(--bg-menu);
+  backdrop-filter:none; -webkit-backdrop-filter:none;
+  box-shadow:none;
+  /* wrapping is left exactly as `.runbar` already defines it — the drawer is
+     wide enough at every width down to the phone override in responsive.css
+     (which the drawer inherits unmodified) that fighting it here only
+     reintroduces the overflow that rule already solved */
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE LIVE PANEL
+   What "Start verification" hands off to — rendered by js/shell.js, not by
+   any one page, because the whole point is that it outlives the page it was
+   opened from. Two sizes: compact (the default the moment a run starts) and
+   expanded (more of the same three facts, larger), plus one link out to the
+   task itself — see js/shell.js's renderLivePanel for where that goes.
+   ══════════════════════════════════════════════════════════════════════════ */
+.livepanel{
+  position:fixed; z-index:65;
+  right:var(--shell-pad-r); bottom:var(--shell-pad-b);
+  width:var(--livepanel-w); max-width:calc(100vw - var(--sp-13));
+  padding:var(--sp-7) var(--sp-8);
+  border:1px solid var(--card-line); border-radius:var(--r-lg);
+  /* its own surface, not a reuse of --bg-menu: that token is neutral navy,
+     tuned for a tooltip or a context menu that borrows its meaning from
+     whatever is under it. This panel is never under anything — it floats
+     free over the whole page — so it gets the same violet-dark the brand
+     mark and the primary button carry, one step darker than either. */
+  background:var(--livepanel-bg);
+  box-shadow:var(--shadow-lg);
+  translate:0 12px; opacity:0; pointer-events:none;
+  transition:opacity var(--t) var(--ease), translate var(--t) var(--ease-out);
+}
+.livepanel.is-up{ translate:0 0; opacity:1; pointer-events:auto; }
+.livepanel[hidden]{ display:none; }
+
+.livepanel__top{ display:flex; align-items:flex-start; gap:var(--sp-6); }
+.livepanel__icon{
+  display:grid; place-items:center; flex:none;
+  width:32px; height:32px; border-radius:var(--r-full);
+  background:var(--accent-wash-soft); color:var(--accent-on-dark);
+}
+/* still running — the same idea run.html's stage marks use: a ring that
+   breathes rather than a spinner that spins, quieter in a panel this small */
+.livepanel__icon--live{ position:relative; }
+.livepanel__icon--live::after{
+  content:''; position:absolute; inset:-1px; border-radius:inherit;
+  border:1px solid var(--accent);
+  animation:step-pulse 1.9s var(--ease-out) infinite;
+}
+.livepanel__icon--done{ background:var(--tag-done-bg); color:var(--tag-done-fg); }
+
+/* BLOCK, not the bare <span> default of inline — without this the title and
+   the "N of M checked" line after it flow together as one run of text and
+   only wrap where the panel happens to run out of width, which is what put
+   "complete" on its own line with no relation to the word above it. */
+.livepanel__text{ min-width:0; flex:1; }
+.livepanel__title{
+  display:block;
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm);
+  font-weight:var(--fw-medium); color:var(--fg);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.livepanel__sub{
+  display:block;
+  margin-top:1px;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+  font-variant-numeric:tabular-nums;
+}
+.livepanel__acts{ display:flex; align-items:center; gap:var(--sp-2); flex:none; }
+.livepanel__btn{
+  display:grid; place-items:center;
+  width:26px; height:26px; border:0; border-radius:var(--r-2xs);
+  background:none; color:var(--fg-muted); cursor:pointer;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.livepanel__btn:hover{ background:var(--bg-hover); color:var(--fg); }
+
+.livepanel__bar{ margin-top:var(--sp-6); }
+
+/* EXPANDED — the same facts, given air, plus the one link out: a way back to
+   the list this task lives in. */
+.livepanel__foot{
+  display:none;
+  margin-top:var(--sp-7); padding-top:var(--sp-6);
+  border-top:1px solid var(--line-soft);
+  align-items:center; justify-content:space-between; gap:var(--sp-6);
+}
+.livepanel__left{
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-faint);
+}
+.livepanel.is-expanded .livepanel__foot{ display:flex; }
+
+/* COMPACT — the resting state. "N of M checked" is the one fact that has to
+   survive collapsing, since it is the whole reason the panel exists; the bar
+   underneath it is the only thing an expand adds. */
+.livepanel:not(.is-expanded) .livepanel__bar{ display:none; }
+
+
+/* ═══════════════════════════════════════════════════ CERTIFICATE REVIEW ══
+   review.html. One certificate, full screen: the queue that got you here, the
+   certificate itself with every finding boxed on the actual page, and the
+   case for why it was flagged. THREE INDEPENDENT PANES, not one scrolling
+   page — reading a long finding list or paging a multi-page certificate must
+   never push the other two out of reach, since all three are what the one
+   decision at the bottom of the panel needs. */
+
+.pagehead--review{ padding-bottom:var(--sp-7); }
+
+.revconf{ display:flex; flex-direction:column; line-height:1.15; }
+.revconf__n{
+  font-size:var(--fs-title); font-weight:var(--fw-medium); color:var(--fg);
+  font-variant-numeric:tabular-nums;
+}
+.revconf__w{ font-size:var(--fs-caption); color:var(--fg-muted); }
+
+.review{
+  display:grid;
+  grid-template-columns:264px 1fr 380px;
+  gap:var(--sp-8);
+  flex:1; min-height:0;
+  padding-bottom:var(--sp-8);
+}
+/* Collapsed, the panel narrows to its own header rather than disappearing —
+   `display:none` took the "Show" link out with the rest of the list, and a
+   hidden panel has no way to bring itself back. `auto` sizes the column to
+   whatever the header row actually needs once the list beneath it is gone. */
+.review.is-queue-collapsed{ grid-template-columns:auto 1fr 380px; }
+.review.is-queue-collapsed .review__queue{ padding-inline:var(--sp-6); }
+.review.is-queue-collapsed .revq__head{ white-space:nowrap; }
+
+/* DONE — nothing left to decide. The findings panel has nothing to show, and
+   an empty bordered box beside a "you're finished" message reads like a
+   loading state that never finished loading, so it goes rather than sit there
+   blank; the stage widens to take its place. */
+.review.is-done{ grid-template-columns:264px 1fr; }
+.review.is-done .review__panel{ display:none; }
+.review.is-done.is-queue-collapsed{ grid-template-columns:auto 1fr; }
+
+/* ── QUEUE ─────────────────────────────────────────────────────────────── */
+.review__queue{
+  display:flex; flex-direction:column; min-height:0;
+  padding:var(--sp-8);
+  border:1px solid var(--card-line); border-radius:var(--r-xl);
+  background:var(--card-bg);
+}
+.revq__head{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-6); flex:none; }
+.revq__title{
+  font-size:var(--fs-micro); line-height:var(--lh-micro);
+  font-weight:var(--fw-medium); letter-spacing:var(--tracking-wide);
+  text-transform:uppercase; color:var(--fg-muted);
+}
+.revq__status{ margin-top:var(--sp-5); font-size:var(--fs-caption); color:var(--fg-muted); flex:none; }
+.revq__list{
+  display:flex; flex-direction:column; gap:var(--sp-2);
+  margin-top:var(--sp-6); flex:1; min-height:0; overflow-y:auto;
+  padding-inline-end:var(--sp-2);   /* clears the scrollbar without crowding the text */
+}
+.revq__row{
+  display:flex; flex-direction:column; gap:var(--sp-3);
+  width:100%; padding:var(--sp-6);
+  border:0; border-radius:var(--r-md);
+  background:none; text-align:start; cursor:pointer;
+  transition:background var(--t) var(--ease);
+}
+.revq__row:hover{ background:var(--tint-04); }
+.revq__row.is-active{ background:var(--accent-wash); }
+.revq__row:focus-visible{ outline:2px solid var(--line-focus); outline-offset:-2px; }
+.revq__name{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.revq__row.is-resolved .revq__name{ color:var(--fg-muted); }
+.revq__sub{ display:flex; align-items:center; gap:var(--sp-4); min-height:20px; }
+.revq__sub .pill{ height:20px; padding:0 var(--sp-4); font-size:var(--fs-micro); }
+.revq__n{ font-size:var(--fs-caption); color:var(--fg-faint); }
+.revq__row.is-resolved .revq__sub{ gap:var(--sp-3); color:var(--success); font-size:var(--fs-caption); }
+.revq__note{
+  flex:none; margin-top:var(--sp-6); padding-top:var(--sp-6);
+  border-top:1px solid var(--line-soft);
+  font-size:var(--fs-caption); line-height:1.5; color:var(--fg-faint);
+}
+
+/* ── STAGE ─────────────────────────────────────────────────────────────── */
+.review__stage{
+  display:flex; flex-direction:column; min-height:0;
+  border:1px solid var(--card-line); border-radius:var(--r-xl);
+  background:var(--bg-stage);
+  overflow:hidden;
+}
+.revstage__bar{
+  display:flex; align-items:center; gap:var(--sp-8); flex:none;
+  padding:var(--sp-5) var(--sp-7);
+  border-bottom:1px solid var(--line-soft);
+}
+.revstage__zoom{ display:flex; align-items:center; gap:var(--sp-3); }
+.revstage__pct{
+  min-width:44px; text-align:center;
+  font-size:var(--fs-caption); color:var(--fg-secondary); font-variant-numeric:tabular-nums;
+}
+.revstage__pages{
+  display:flex; align-items:center; gap:var(--sp-4); margin-inline:auto;
+  font-size:var(--fs-caption); color:var(--fg-muted); font-variant-numeric:tabular-nums;
+}
+.revstage__tools{ display:flex; align-items:center; gap:var(--sp-3); margin-inline-start:auto; }
+
+/* The certificate sits on its own faint bloom rather than the bare stage
+   floor, so a portrait page at 100% doesn't read as a rectangle floating on
+   nothing when the viewport is wider than it is. */
+.certframe{
+  flex:1; min-height:0; overflow:auto;
+  display:flex; justify-content:center;
+  padding:var(--sp-9);
+  background:radial-gradient(60% 55% at 50% 0%, var(--tint-03), transparent 70%);
+}
+.certframe__page{ position:relative; flex:none; margin:auto; }
+.certframe__page > svg.cert{
+  display:block; width:100%; height:auto;
+  border-radius:var(--r-sm); box-shadow:var(--shadow-lg);
+}
+
+/* The marker overlay shares the certificate's OWN viewBox (595×842, the exact
+   space js/certs.js draws every element in) — a box drawn at a region's real
+   coordinates lands on that element at any zoom, no percentage math involved. */
+.certmarks{
+  position:absolute; inset:0; width:100%; height:100%;
+  /* the layer itself takes no clicks — only each mark does, set back on below.
+     Without this the transparent SVG sits over the whole page and swallows
+     clicks a pixel outside any drawn shape, including its own children. */
+  pointer-events:none;
+  transition:opacity var(--t) var(--ease);
+}
+.certmarks.is-hidden{ opacity:0; }
+.mark{ cursor:pointer; pointer-events:auto; }
+/* fill:transparent, not none — an SVG shape with no fill is not hit-testable
+   over its interior, only its stroke, which left just the 2px dashed line
+   clickable instead of the whole region. Transparent still paints nothing
+   visually but keeps the fill area part of the click target. */
+.mark__box{ fill:transparent; stroke-width:2.5; stroke-dasharray:5 4; }
+.mark--late    .mark__box{ stroke:var(--tag-late-fg); }
+.mark--pending .mark__box{ stroke:var(--tag-pending-fg); }
+.mark--unknown .mark__box{ stroke:var(--fg-muted); }
+.mark--late    .mark__badge{ fill:var(--tag-late-fg); }
+.mark--pending .mark__badge{ fill:var(--tag-pending-fg); }
+.mark--unknown .mark__badge{ fill:var(--fg-muted); }
+.mark__n{
+  fill:var(--on-accent); font-family:var(--font);
+  font-size:13px; font-weight:var(--fw-semibold);
+  text-anchor:middle; dominant-baseline:central; pointer-events:none;
+}
+.mark:hover .mark__box, .mark:focus-visible .mark__box{ stroke-width:3.5; }
+.mark:focus-visible{ outline:none; }
+.mark.is-pulse .mark__badge{ animation:markPulse .9s var(--ease); }
+@keyframes markPulse{
+  0%{ transform:scale(1); } 30%{ transform:scale(1.4); } 100%{ transform:scale(1); }
+}
+
+.revstage__hint{
+  flex:none; padding:var(--sp-4) var(--sp-7) 0;
+  font-size:var(--fs-caption); color:var(--fg-faint); text-align:center;
+}
+.revstage__foot{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-6);
+  flex:none; padding:var(--sp-6) var(--sp-7);
+  border-top:1px solid var(--line-soft);
+  font-size:var(--fs-caption); color:var(--fg-muted);
+}
+
+/* ── PANEL ─────────────────────────────────────────────────────────────── */
+.review__panel{
+  display:flex; flex-direction:column; min-height:0;
+  border:1px solid var(--card-line); border-radius:var(--r-xl);
+  background:var(--card-bg);
+  overflow:hidden;
+}
+.revtabs{
+  display:flex; align-items:center; gap:var(--sp-10); flex:none;
+  padding:var(--sp-6) var(--sp-8) 0;
+  border-bottom:1px solid var(--line-soft);
+}
+.revpanel__scroll{ flex:1; min-height:0; overflow-y:auto; padding:var(--sp-8); }
+.revpanel__subcount{
+  display:block; margin-top:var(--sp-2);
+  font-size:var(--fs-caption); font-weight:var(--fw-regular);
+  text-transform:none; letter-spacing:0; color:var(--fg-faint);
+}
+
+.revfindings{ display:flex; flex-direction:column; gap:var(--sp-6); margin-top:var(--sp-7); }
+.revfinding{
+  display:flex; gap:var(--sp-6);
+  padding:var(--sp-6);
+  border:1px solid var(--line-soft); border-radius:var(--r-md);
+  cursor:pointer;
+  transition:background var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.revfinding:hover, .revfinding:focus-visible{
+  background:var(--tint-04); border-color:var(--line-strong); outline:none;
+}
+.revfinding.is-pulse{ background:var(--accent-wash-soft); border-color:var(--accent-line); }
+.revfinding__n{
+  display:grid; place-items:center; flex:none;
+  width:22px; height:22px; margin-top:1px;
+  border-radius:50%; background:var(--bg-chip); color:var(--fg-secondary);
+  font-size:var(--fs-micro); font-weight:var(--fw-semibold);
+}
+.revfinding__body{ min-width:0; flex:1; }
+.revfinding__row{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-5); }
+.revfinding__summary{
+  font-size:var(--fs-body-sm); line-height:1.4; font-weight:var(--fw-medium); color:var(--fg);
+}
+.revfinding__ev{
+  flex:none; font-size:var(--fs-micro); color:var(--fg-faint);
+  text-transform:uppercase; letter-spacing:var(--tracking-wide);
+}
+.revfinding__detail{ margin-top:var(--sp-3); font-size:var(--fs-caption); line-height:1.5; color:var(--fg-muted); }
+.revfinding__jump{ display:block; margin-top:var(--sp-4); font-size:var(--fs-caption); }
+
+.revchecks{ display:flex; flex-direction:column; gap:var(--sp-5); margin-top:var(--sp-7); }
+.revcheck{ display:flex; align-items:center; gap:var(--sp-5); }
+.revcheck__dot{ width:8px; height:8px; border-radius:50%; flex:none; background:var(--line-strong); }
+.revcheck.is-flagged .revcheck__dot{ background:var(--danger); }
+.revcheck__label{ font-size:var(--fs-body-sm); color:var(--fg); }
+.revcheck__result{ margin-inline-start:auto; font-size:var(--fs-caption); color:var(--fg-muted); }
+.revcheck.is-flagged .revcheck__result{ color:var(--danger); }
+
+/* ── DECISION — the panel's own sticky footer, same technique the task
+   page's run bar uses: opaque enough that scrolling findings never show
+   through it, because the one control that has to stay put is the one that
+   closes this certificate out. ─────────────────────────────────────────── */
+.revdecide{
+  flex:none;
+  padding:var(--sp-7) var(--sp-8);
+  border-top:1px solid var(--line-soft);
+  background:var(--runbar-bg);
+}
+.revnote{
+  display:block; width:100%; min-height:52px;
+  padding:var(--sp-5) var(--sp-6);
+  border:1px solid var(--line); border-radius:var(--r-sm);
+  background:var(--bg-control);
+  font-family:var(--font); font-size:var(--fs-body-sm); color:var(--fg);
+  resize:vertical;
+}
+.revnote::placeholder{ color:var(--fg-faint); }
+.revnote:focus-visible{ outline:2px solid var(--line-focus); outline-offset:1px; border-color:transparent; }
+.revdecide__pending{ margin-top:var(--sp-5); font-size:var(--fs-caption); color:var(--fg-muted); }
+.revdecide__pending b{ color:var(--fg); font-weight:var(--fw-medium); }
+.revdecide__actions{ display:flex; gap:var(--sp-5); margin-top:var(--sp-6); }
+.revdecide__actions .btn{ flex:1; }
+.revdecide__done{
+  display:flex; align-items:center; gap:var(--sp-4);
+  font-size:var(--fs-body-sm); color:var(--success);
+}
+.revdecide__keys{
+  display:flex; align-items:center;
+  margin-top:var(--sp-6); padding-top:var(--sp-6);
+  border-top:1px solid var(--line-soft);
+  font-size:var(--fs-micro); color:var(--fg-faint);
+}
+.revdecide__left{ margin-inline-start:auto; font-variant-numeric:tabular-nums; }
+
+/* ── DONE ──────────────────────────────────────────────────────────────── */
+.revdone{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:var(--sp-6); text-align:center; padding:var(--sp-15);
+}
+.revdone__title{ font-size:var(--fs-title); color:var(--fg); max-width:52ch; }
+.revdone__actions{ display:flex; gap:var(--sp-6); margin-top:var(--sp-4); }

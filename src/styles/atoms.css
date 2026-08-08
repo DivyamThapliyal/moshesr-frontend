@@ -1,0 +1,413 @@
+/* ============================================================================
+   MOHSAR — ATOMS
+   The smallest reusable pieces. Nothing here knows where it sits on a page.
+   Every atom is documented by the Figma component set of the same name.
+   ========================================================================== */
+
+/* ───────────────────────────────────────────────────────────────── ICON ── */
+.icon{ display:block; flex:none; color:inherit; }
+
+
+/* ─────────────────────────────────────────────────────────────── BUTTON ──
+   Variants: primary · secondary · ghost — the same three the Figma
+   Button set defines.   Sizes: sm · md · cta.
+   One anatomy, so a button can change weight in a layout without changing
+   shape. The design keeps labels at Regular — Medium is as heavy as it goes. */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:var(--sp-4);
+  height:var(--h-btn); padding:0 var(--sp-9);
+  border:1px solid transparent; border-radius:var(--r-2xs);
+  font-family:var(--font); font-size:var(--fs-body); line-height:1;
+  font-weight:var(--fw-regular); color:var(--fg);
+  white-space:nowrap; cursor:pointer;
+  transition:background var(--t) var(--ease), border-color var(--t) var(--ease),
+             color var(--t) var(--ease), box-shadow var(--t) var(--ease),
+             transform var(--t-fast) var(--ease);
+}
+.btn:active{ transform:translateY(1px); }
+.btn:disabled,.btn[aria-disabled="true"]{
+  color:var(--fg-disabled); border-color:var(--line-soft);
+  background:none; box-shadow:none; pointer-events:none;
+}
+
+/* Primary — the single strongest thing on a screen. One per view. */
+.btn--primary{
+  position:relative;            /* the ring below is positioned against this */
+  /* no height of its own: a primary button is the same object as every other
+     button, drawn louder. Only its padding is wider, because a CTA earns air
+     around its label, not a taller box. */
+  padding:0 var(--sp-10);
+  border-radius:var(--r-2xs);   /* 6px, all four corners */
+  background:var(--accent); color:var(--on-accent);
+  font-size:var(--fs-body); font-weight:var(--fw-medium);
+  box-shadow:var(--shadow-accent);
+}
+/* The gloss is a masked 1px gradient RING — the same technique as the sidebar,
+   not an imitation of it: brightest at the top-right, never fading out, and
+   nothing washed over the face. It reads as edge light rather than shine, which
+   is what keeps it subtle at this size.
+   It has to be masked. A `border-box` gradient layer floods the whole surface
+   instead of staying on the edge, exactly as it does on the rail. */
+.btn--primary::before{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  padding:1px; pointer-events:none;
+  /* --btn-ring, not the stops themselves: it is a lit SURFACE like --rail-ring
+     and --stage-ring, so it lives in tokens and inverts with the theme. */
+  background:var(--btn-ring);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask-composite:exclude;
+}
+.btn--primary:hover{ background:var(--accent-hover); }
+.btn--primary:active{ background:var(--accent-active); }
+/* a disabled control is not lit — the ring goes with the shadow */
+.btn--primary:disabled,
+.btn--primary[aria-disabled="true"]{ background:var(--violet-900); color:var(--fg-disabled); }
+.btn--primary:disabled::before,
+.btn--primary[aria-disabled="true"]::before{ display:none; }
+
+/* Secondary — the workhorse on cards. Accent edge, no fill.
+   Named for the design system's variant, not for how it is drawn: the Figma set
+   is Primary · Secondary · Ghost, and this was the only one whose CSS name
+   ("outline") described its appearance instead of its job. A component you
+   cannot find by the name the library gives it is a component that gets
+   reinvented. `.btn--outline` is kept below as a deprecated alias. */
+.btn--secondary{
+  border-color:var(--accent-line);
+  background:none; color:var(--fg);
+}
+.btn--secondary:hover{ background:var(--accent-wash-soft); border-color:var(--violet-400); }
+.btn--secondary:active{ background:var(--accent-wash); }
+/* deprecated — use .btn--secondary. Here so nothing already written breaks. */
+.btn--outline{ border-color:var(--accent-line); background:none; color:var(--fg); }
+.btn--outline:hover{ background:var(--accent-wash-soft); border-color:var(--violet-400); }
+.btn--outline:active{ background:var(--accent-wash); }
+
+/* Ghost — chrome. Neutral edge, no fill. */
+.btn--ghost{ border-color:var(--line); color:var(--fg-secondary); }
+.btn--ghost:hover{ background:var(--bg-hover); color:var(--fg); }
+
+.btn--block{ width:100%; }
+
+/* Dashed — the "add another one" recipe, reused wherever adding is the whole
+   point of the control rather than a settled action. Dashed is already the
+   product's one convention for "put something here" (the drop zone, an
+   unresolved type); a button that offers to take more of the same thing earns
+   the same edge rather than the solid secondary line. */
+.btn--dashed{ border-style:dashed; }
+
+/* Small — inline with compact rows: a panel action, a table cell. Same
+   anatomy, tighter box; never its own color or weight. */
+.btn--sm{
+  height:var(--h-control-sm); padding:0 var(--sp-7);
+  font-size:var(--fs-body-sm); line-height:1;
+}
+
+
+/* ────────────────────────────────────────────────────────── ICON BUTTON ──
+   The same button with the label removed — never a different component. */
+.icon-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  /* flex:none — it lives in flex rows next to a flexible search field, and a
+     square control that shrinks stops being square */
+  flex:none;
+  width:var(--h-control); height:var(--h-control);
+  border:1px solid var(--line); border-radius:var(--r-2xs);
+  background:var(--bg-control); color:var(--fg-secondary);
+  cursor:pointer;
+  transition:background var(--t) var(--ease), border-color var(--t) var(--ease),
+             color var(--t) var(--ease);
+}
+.icon-btn:hover{ background:var(--bg-control-hover); color:var(--fg); border-color:var(--line-strong); }
+.icon-btn[aria-pressed="true"],
+.icon-btn.is-active{
+  border-color:var(--accent-line); color:var(--fg); background:var(--accent-wash-soft);
+}
+.icon-btn:disabled{ color:var(--fg-disabled); border-color:var(--line-soft); pointer-events:none; }
+/* panel chrome — a control inside an overlay, where the 52px page control is
+   heavier than the header it sits in */
+.icon-btn--sm{ width:var(--h-control-sm); height:var(--h-control-sm); }
+
+
+/* ──────────────────────────────────────────────────────────────── BADGE ──
+   A COUNT — a number with no state. Circular, so it never reads as a pill. */
+.badge{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:var(--h-badge); height:var(--h-badge); padding:0 var(--sp-3);
+  border-radius:var(--r-full);
+  background:var(--accent); color:var(--on-accent);
+  font-size:var(--fs-micro); line-height:1; font-weight:var(--fw-medium);
+  font-variant-numeric:tabular-nums;
+}
+/* the resting count — same shape, quieter, so the active row still leads */
+.badge--muted{ background:var(--bg-badge-muted); color:var(--fg-badge-muted); }
+
+
+/* ──────────────────────────────────────────────────────────────── PILL ──
+   A STATE, as a soft tinted chip (Option C). Half the weight of a bordered
+   pill: no border, no dot, 26px tall, the status colour carried by the surface
+   at low alpha with the label a tint of the same hue.
+   The dot is gone because at this size the chip IS the colour cue — a dot as
+   well would be the same fact stated twice in 26px.
+   No min-width either: the chip hugs its label. Alignment of the row is the
+   LAYOUT's job (see the list view's fixed text column), not the tag's. */
+.pill{
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:var(--sp-4);
+  height:var(--h-pill); padding:0 10px;
+  border:0; border-radius:var(--r-xs);
+  background:var(--bg-chip);
+  font-size:var(--fs-caption); line-height:1; font-weight:var(--fw-medium);
+  color:var(--fg-secondary);
+}
+.pill__dot{ display:none; }
+/* Late is red and Pending is amber, not both red: a five-step ramp where the
+   top two share a colour cannot say which one is worse. */
+.pill--late    { background:var(--tag-late-bg);     color:var(--tag-late-fg); }
+.pill--pending { background:var(--tag-pending-bg);  color:var(--tag-pending-fg); }
+.pill--progress{ background:var(--tag-progress-bg); color:var(--tag-progress-fg); }
+.pill--new     { background:var(--tag-new-bg);      color:var(--tag-new-fg); }
+.pill--done    { background:var(--tag-done-bg);     color:var(--tag-done-fg); }
+
+/* OUTLINE — a LABEL, not a state. The filled pill above says how a task is
+   doing; this one says what a document was read as. Different job, so it takes
+   the outline treatment the buttons already use rather than a sixth tint that
+   would have to compete with the five status colours for meaning. */
+.pill--outline{
+  background:none; border:1px solid var(--line-strong); color:var(--fg-secondary);
+}
+/* "Could not tell" — the border goes dashed. A dashed edge is the one visual
+   convention that already means provisional, and it keeps the row honest: the
+   sort produced no answer here rather than a quiet one. */
+.pill--unknown{
+  background:none; border:1px dashed var(--line-strong); color:var(--fg-muted);
+}
+
+
+/* ───────────────────────────────────────────────────────────── CHECKBOX ──
+   A real <input> under a drawn box: the control keeps its own focus, keyboard
+   and form semantics, and only the paint is ours. */
+.check{ display:inline-flex; align-items:flex-start; gap:var(--sp-5); cursor:pointer; }
+/* single-line checks stay optically centred; only a hinted one needs the top */
+.check:not(:has(.check__hint)){ align-items:center; }
+.check__input{
+  position:absolute; width:1px; height:1px; margin:-1px; padding:0;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+.check__box{
+  display:grid; place-items:center; flex:none;
+  width:var(--h-check); height:var(--h-check);
+  border:1px solid var(--line-strong); border-radius:var(--r-2xs);
+  background:var(--bg-control);
+  color:var(--on-accent);
+  transition:background var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.check__box .icon{ opacity:0; transition:opacity var(--t) var(--ease); }
+.check:hover .check__box{ border-color:var(--line-focus); }
+.check__input:checked + .check__box{ background:var(--accent); border-color:var(--accent); }
+.check__input:checked + .check__box .icon{ opacity:1; }
+/* indeterminate — some of the set, not all. A dash, never a tick. */
+.check__input:indeterminate + .check__box{ background:var(--accent); border-color:var(--accent); }
+.check__input:indeterminate + .check__box::after{
+  content:''; position:absolute;
+  /* the dash is half the box, so it scales with --h-check rather than being a
+     10 that stops fitting the moment the checkbox size changes */
+  width:calc(var(--h-check) / 2); height:2px; border-radius:1px;
+  background:var(--on-accent);
+}
+.check__input:focus-visible + .check__box{ outline:2px solid var(--line-focus); outline-offset:2px; }
+.check__label{
+  display:block;
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg);
+}
+/* the second line under a choice states its COST — five messages per certificate
+   across 74 of them is 370 messages, which is the fact that actually decides it */
+.check__hint{
+  display:block; margin-top:2px;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-muted);
+}
+
+
+/* ──────────────────────────────────────────────────────────── THUMBNAIL ──
+   The document's stand-in until a real page render exists. It is deliberately
+   a placeholder and looks like one — an icon on a tinted square, not a fake
+   page — so nobody reads it as "this is what the scan looks like". */
+.thumb{
+  display:grid; place-items:center; flex:none;
+  width:var(--h-thumb); height:var(--h-thumb);
+  border:1px solid var(--line); border-radius:var(--r-2xs);
+  background:var(--tint-04); color:var(--fg-faint);
+}
+
+
+/* ──────────────────────────────────────────────────── FIELD LABEL (micro) ──
+   The small caps label that names a control above it. */
+.label{
+  display:block; margin-bottom:var(--sp-4);
+  font-size:var(--fs-micro); line-height:var(--lh-micro);
+  font-weight:var(--fw-medium); letter-spacing:var(--tracking-wide);
+  text-transform:uppercase; color:var(--fg-muted);
+}
+
+
+/* ──────────────────────────────────────────────────────────────── FIELD ──
+   Outlined, not filled. Focus is the only state that uses the accent — a
+   hover that looks like focus makes keyboard position impossible to find. */
+.field{
+  display:flex; align-items:center; gap:var(--sp-5);
+  height:var(--h-control); padding:0 var(--sp-8);
+  /* Square, like every other CONTROL. The pill it used to be was the only
+     rounded thing in the chrome — rounded is reserved for tags. */
+  border:1px solid var(--line); border-radius:var(--r-2xs);
+  background:var(--bg-control);
+  transition:border-color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.field:hover{ border-color:var(--line-strong); }
+.field:focus-within{ border-color:var(--line-focus); background:var(--tint-04); }
+.field__icon{ color:var(--fg-muted); }
+.field input{
+  flex:1; min-width:0; height:100%;
+  border:0; outline:none; background:none;
+  font-family:var(--font); font-size:var(--fs-body); color:var(--fg);
+}
+.field input::placeholder{ color:var(--fg-muted); }
+/* The ⌘K hint. It sits at the field's right edge and steps back the moment the
+   field is focused — once you are typing, the shortcut that got you here is
+   noise. */
+.field__kbd{
+  flex:none; display:inline-grid; place-items:center;
+  height:22px; padding:0 var(--sp-4);
+  border:1px solid var(--line); border-radius:var(--r-2xs);
+  background:var(--tint-06); color:var(--fg-muted);
+  font-family:var(--font); font-size:var(--fs-micro); line-height:1;
+  transition:opacity var(--t) var(--ease);
+}
+.field:focus-within .field__kbd{ opacity:0; }
+.field input::-webkit-search-cancel-button{ display:none; }
+/* IN THE RAIL — full width of the rail's content column, and a step shorter
+   than the 52px page control: it sits between the logo and the nav rows, and at
+   full height it read as a third heavy block in a stack of two. */
+.field--rail{ width:100%; height:var(--h-control-sm); padding:0 var(--sp-6); }
+.field--rail input{ font-size:var(--fs-body-sm); min-width:0; }
+
+
+/* ───────────────────────────────────────────────────── SEGMENTED CONTROL ──
+   A small set of mutually exclusive options, all visible at once. It replaces
+   the single swapping icon the theme used to be: that control could show the
+   theme you would GET or the one you were IN, never both, so it never actually
+   said where you were. Two buttons say both.
+
+   NO TRACK. The options carry no shared box — only the selected one takes a
+   surface, and the rest sit as bare glyphs. Chosen over a bordered track and a
+   recessed well (Ameer, 5 Aug): the rail is already a stack of quiet chrome,
+   and a second bordered box beside a language control that deliberately has
+   none was the one thing that made this row read as heavier than it is. */
+.seg{
+  display:inline-flex; align-items:center; gap:var(--sp-2);
+}
+.seg__btn{
+  position:relative;
+  display:grid; place-items:center; flex:none;
+  width:var(--h-seg); height:var(--h-seg);
+  border:0; border-radius:var(--r-xs);
+  background:none; color:var(--fg-muted);
+  cursor:pointer;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.seg__btn:hover{ color:var(--fg); background:var(--bg-hover); }
+/* The selected option is HIGHLIGHTED, not branded. The accent is the product's
+   one loud colour and it is spent on the primary action and the active nav row;
+   spending it again on a theme preference — a setting you touch twice a year —
+   made the quietest control in the rail the brightest thing in it. */
+.seg__btn.is-on{ background:var(--bg-control); color:var(--fg); }
+.seg__btn.is-on:hover{ background:var(--bg-control-hover); }
+.seg__btn:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+
+
+/* ─────────────────────────────────────────────────────────────── SELECT ── */
+.select{
+  display:flex; align-items:center; gap:var(--sp-5);
+  height:var(--h-control); padding:0 var(--sp-9);
+  border:1px solid var(--line); border-radius:var(--r-2xs);
+  background:var(--bg-control);
+  font-size:var(--fs-body); font-weight:var(--fw-regular); color:var(--fg);
+  cursor:pointer;
+  transition:border-color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.select:hover{ background:var(--bg-control-hover); border-color:var(--line-strong); }
+.select__value{ min-width:85px; text-align:left; }
+.select__chevron{ color:var(--fg-muted); }
+/* BARE — the same control with its box removed, for places that already sit
+   inside one. In the rail the surrounding panel IS the container, so a second
+   bordered box around the language would be a box inside a box. */
+.select--bare{
+  height:auto; padding:var(--sp-4) var(--sp-5);
+  border-color:transparent; background:none;
+  color:var(--fg-secondary);
+}
+.select--bare:hover{ background:var(--bg-hover); border-color:transparent; color:var(--fg); }
+.select--bare:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+.select--bare .select__value{ min-width:0; font-size:var(--fs-body-sm); }
+
+
+/* ─────────────────────────────────────────────────────────────── AVATAR ── */
+.avatar{
+  display:grid; place-items:center; flex:none;
+  width:44px; height:44px; border-radius:var(--r-full);
+  background:linear-gradient(150deg,var(--violet-500),var(--violet-700));
+  color:var(--on-accent);
+  font-size:var(--fs-body-sm); font-weight:var(--fw-medium);
+}
+
+
+/* ───────────────────────────────────────────────────────────────── DOT ── */
+.dot{ width:9px; height:9px; border-radius:50%; flex:none; background:currentColor; }
+.dot--success{ color:var(--success); }
+
+
+/* ──────────────────────────────────────────────────────────────── RULE ── */
+.rule{ height:1px; border:0; margin:0; background:var(--line-soft); }
+
+/* Danger — the confirm button on a destructive dialog, and nowhere else.
+   Not in the Figma Button set yet: the library has Primary · Secondary · Ghost,
+   and a red confirm is the one thing none of those can be. Using Primary there
+   would put the brand violet on "Remove", which reads as the encouraged path. */
+.btn--danger{
+  background:var(--danger-solid); color:var(--on-danger);
+  border-color:transparent;
+}
+.btn--danger:hover{ background:var(--danger-solid-hover); }
+.btn--danger:focus-visible{ outline:2px solid var(--danger); outline-offset:2px; }
+
+
+/* ────────────────────────────────────────────────────────────── PROGRESS ──
+   A determinate bar. It is the only place in the product where the accent
+   fills a large area, and it earns it: this is the one thing on the screen the
+   officer is actually waiting on. */
+.progress{
+  position:relative;
+  height:var(--h-progress);
+  border-radius:var(--r-full);
+  background:var(--tint-06);
+  overflow:hidden;
+}
+.progress__fill{
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,var(--violet-600),var(--violet-400));
+  /* the width is the only thing JS writes — everything else about the bar is
+     decided here, so a change to the scale or the brand lands without touching
+     the page */
+  transition:width var(--t-slow) var(--ease-out);
+}
+/* a bar that is still moving gets a travelling sheen; a finished one does not,
+   because "still working" and "done" must not look the same at a glance */
+.progress--live .progress__fill::after{
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,transparent,var(--w-24),transparent);
+  animation:progress-sheen 1.8s var(--ease) infinite;
+}
+@keyframes progress-sheen{ from{ transform:translateX(-100%);} to{ transform:translateX(100%);} }
+@media (prefers-reduced-motion:reduce){ .progress--live .progress__fill::after{ animation:none; } }

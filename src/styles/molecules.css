@@ -1,0 +1,406 @@
+/* ============================================================================
+   MOHSAR — MOLECULES
+   Atoms combined into a single recognisable control. Still placement-agnostic.
+   ========================================================================== */
+
+/* ──────────────────────────────────────────────────────────── NAV ITEM ──
+   The sidebar row. The active row is the ONLY place the accent wash appears
+   in the rail, so "where am I" is never ambiguous. */
+.nav-item{
+  position:relative;
+  display:flex; align-items:center; gap:0;
+  /* gap:0 and per-child margins, NOT a shared gap: the icon needs 18px of air
+     and the badge only 10, and one gap for both leaves "Sent for sign-off"
+     7px short of fitting — it ellipsised. */
+  width:100%; height:var(--h-nav); padding:0 12px 0 var(--sp-7);
+  border-radius:var(--r-sm);   /* measured off the reference — not --r-lg */
+  font-size:var(--fs-body-sm); font-weight:var(--fw-regular);
+  letter-spacing:var(--tracking-tight);
+  color:var(--fg);
+  cursor:pointer;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.nav-item:hover{ background:var(--bg-hover); color:var(--fg); }
+.nav-item__icon{ margin-right:18px; color:var(--fg-secondary); transition:color var(--t) var(--ease); }
+.nav-item:hover .nav-item__icon{ color:var(--fg); }
+.nav-item__label{ flex:1; text-align:left; white-space:nowrap; position:relative;
+  overflow:hidden; text-overflow:ellipsis; }
+
+/* The active row is a violet wash with a 1px ring, and — like the panel — the
+   ring is NOT even: it is bright down the LEFT edge and almost gone on the
+   right, so the row reads as lit from the same direction as everything else.
+   A flat border-color cannot express that, so the ring is a masked gradient,
+   the same technique the sidebar itself uses. */
+.nav-item.is-active{
+  background:var(--accent-wash-row);
+  color:var(--fg);
+}
+.nav-item.is-active::before{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  padding:1px; pointer-events:none;
+  background:var(--nav-active-ring);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+          mask-composite:exclude;
+}
+.nav-item.is-active .nav-item__icon{ color:var(--fg); }
+.nav-item .badge{ margin-left:10px; }
+
+.nav-item:disabled{ color:var(--fg-disabled); pointer-events:none; }
+.nav-item:disabled .nav-item__icon{ color:var(--fg-disabled); }
+
+
+/* ───────────────────────────────────────────────────────────────── TAB ──
+   The underline is present in BOTH states and only takes colour when active,
+   so the row never shifts by 2px as you move between tabs. */
+.tab{
+  position:relative;
+  display:inline-flex; align-items:center; gap:var(--sp-5);
+  height:44px; padding:0 var(--sp-2);
+  background:none; border:0;
+  font-family:var(--font); font-size:var(--fs-body); line-height:var(--lh-body);
+  font-weight:var(--fw-regular); color:var(--fg-secondary);
+  white-space:nowrap; cursor:pointer;
+  transition:color var(--t) var(--ease);
+}
+.tab:hover{ color:var(--fg); }
+.tab:focus-visible{ outline:2px solid var(--line-focus); outline-offset:3px; border-radius:var(--r-2xs); }
+/* The underline sits at the tab's bottom edge, which is exactly where the
+   toolbar's baseline runs — so the 2px accent covers the 1px rule rather than
+   floating above it. */
+.tab::after{
+  content:''; position:absolute; left:0; right:0; bottom:0; height:2px;
+  background:transparent;
+  transition:background var(--t) var(--ease);
+}
+.tab.is-active{ color:var(--fg); font-weight:var(--fw-medium); }
+.tab.is-active::after{ background:var(--accent); }
+
+/* The label reserves its own BOLD width at all times. Without this the row
+   re-flows every time you change tab, because Medium is wider than Regular —
+   the hidden twin is zero-height, so it costs nothing but the width. */
+.tab__label{ display:inline-block; position:relative; }
+.tab__label::after{
+  content:attr(data-label);
+  display:block; height:0; overflow:hidden; visibility:hidden;
+  font-weight:var(--fw-medium); pointer-events:none;
+}
+
+/* the count is a BADGE, not a second word — square like every other control */
+.tab__count{
+  display:inline-grid; place-items:center;
+  min-width:22px; height:22px; padding:0 var(--sp-3);
+  border-radius:var(--r-2xs);
+  background:var(--tint-06); color:var(--fg-muted);
+  font-size:var(--fs-micro); font-weight:var(--fw-regular); line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.tab.is-active .tab__count{ background:var(--accent); color:var(--on-accent); }
+
+
+/* ──────────────────────────────────────────────────────────── USER CHIP ── */
+.user{
+  /* Was 8: the row had 14px of left padding, the chevron needed its 12px inset
+     to end like a nav badge, and squeezing the gap was the only way "Fatima Al
+     Zaabi" still fitted. Dropping that left padding gave the row 14px back, so
+     the gap can be the 12 it should have been — which also puts the name on the
+     same 70px line as the wordmark and the nav labels. */
+  display:flex; align-items:center; gap:var(--sp-6);
+  /* left inset 0 for the same reason as .sidebar__brand: the avatar IS the
+     row's leading block, so it starts on the rail's content edge — the same
+     line the nav pill starts on — instead of 14px inside it. */
+  width:100%; padding:var(--rail-pad) 12px var(--rail-pad) 0;
+  /* --r-sm, matching .nav-item: the two hover boxes stack directly above each
+     other in the rail, so a 14 under a 10 reads as a mistake. */
+  border-radius:var(--r-sm);
+  cursor:pointer;
+  transition:background var(--t) var(--ease);
+}
+.user:hover{ background:var(--bg-hover); }
+.user__text{ display:flex; flex-direction:column; min-width:0; text-align:left; }
+.user__name{
+  /* 16 over 13, solved from the reference by ink width AND cap height (102px /
+     12px cap for the name, 85px / 11px for the role). The account block is a
+     step DOWN from the nav, not level with it. */
+  display:block; font-size:var(--fs-body-sm); line-height:var(--lh-body-sm);
+  font-weight:var(--fw-medium); margin-bottom:2px;
+  letter-spacing:var(--tracking-tight); color:var(--fg);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.user__role{
+  display:block; font-size:var(--fs-caption); line-height:1.15; color:var(--fg-muted);
+  /* an address is arbitrarily long — it truncates rather than widening the rail */
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.user__chevron{ margin-inline-start:auto; color:var(--fg-faint); flex:none; }
+
+
+/* ────────────────────────────────────────────────────────── BREADCRUMB ──
+   Where you are, and the way back. It replaces the page title in the top bar on
+   any screen you arrive at FROM somewhere, so the bar answers "where am I"
+   the same way on every page — one lead item on the left, actions on the right.
+
+   The last crumb is not a link. It names the page you are already on, and a
+   link to here is a control that does nothing. */
+.crumbs{ min-width:0; }
+.crumbs__list{ display:flex; align-items:center; flex-wrap:wrap; gap:var(--sp-3); }
+.crumbs__item{ display:flex; align-items:center; gap:var(--sp-3); min-width:0; }
+.crumbs__link{
+  font-size:var(--fs-body); line-height:var(--lh-body);
+  color:var(--fg-muted); text-decoration:none;
+  border-radius:var(--r-2xs);
+  transition:color var(--t) var(--ease);
+}
+.crumbs__link:hover{ color:var(--fg); text-decoration:underline; text-underline-offset:3px; }
+.crumbs__link:focus-visible{ outline:2px solid var(--line-focus); outline-offset:3px; }
+.crumbs__sep{ display:inline-flex; color:var(--fg-disabled); }
+.crumbs__here{
+  font-size:var(--fs-body); line-height:var(--lh-body);
+  font-weight:var(--fw-medium); color:var(--fg);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+
+/* ─────────────────────────────────────────────────────────────── BRAND ── */
+.brand{ position:relative; display:flex; align-items:center; gap:var(--sp-5); }
+/* reserve the toggle's column so a longer tagline ellipsises instead of
+   running underneath it — the toggle is out of flow and cannot push it */
+.brand__text{ flex:1; min-width:0; padding-inline-end:36px; }
+/* the wordmark is the other half of the home control */
+.brand__home{
+  display:block; text-align:start; cursor:pointer;
+  border-radius:var(--r-xs);
+  transition:opacity var(--t) var(--ease);
+}
+.brand__home:hover{ opacity:.78; }
+.brand__mark:hover{ opacity:.9; }
+.brand__mark{
+  position:relative; display:grid; place-items:center; flex:none;
+  width:var(--brand-mark); height:var(--brand-mark); padding:0; border:0;
+  border-radius:var(--r-md);
+  cursor:default;
+  background:linear-gradient(150deg,var(--violet-500),var(--violet-700));
+  box-shadow:var(--shadow-accent);
+  color:var(--on-accent);
+  font-size:var(--fs-title); font-weight:var(--fw-semibold);
+}
+.brand__mark-text,
+.brand__mark-exp{ display:grid; place-items:center; width:100%; height:100%; }
+.brand__mark-exp{ display:none; }
+/* Collapsed, the mark IS the expand button: hover swaps the letter for the
+   panel icon. Same affordance as Spark's Z, so the rail needs no extra chrome. */
+/* The mark is always a control: home when the rail is open, expand when it is
+   closed. Both states are real actions, so it keeps its cursor and its ring. */
+.brand__mark{ cursor:pointer; }
+.app:is(.is-collapsed,.is-rail) .brand__mark:hover .brand__mark-text,
+.app:is(.is-collapsed,.is-rail) .brand__mark:focus-visible .brand__mark-text{ display:none; }
+.app:is(.is-collapsed,.is-rail) .brand__mark:hover .brand__mark-exp,
+.app:is(.is-collapsed,.is-rail) .brand__mark:focus-visible .brand__mark-exp{ display:grid; }
+
+.brand__name{ font-size:var(--fs-body); line-height:var(--lh-body); font-weight:var(--fw-semibold); letter-spacing:var(--tracking-tight); color:var(--fg); }
+.brand__sub{ white-space:nowrap; font-size:var(--fs-caption); color:var(--fg-muted); margin-top:2px; }
+
+
+/* ──────────────────────────────────────────────────────── SUMMARY ITEM ── */
+.summary-item{ font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg-secondary); }
+.summary-item--accent{ color:var(--accent-on-dark); }
+.summary-sep{ color:var(--fg-disabled); font-size:var(--fs-micro); }
+
+
+/* ────────────────────────────────────────────────────────────────── MENU ──
+   The card's ⋯ popup. It is rendered into <body> and positioned fixed, NOT
+   parked inside the card: .tasks scrolls, and an absolutely-positioned menu
+   inside a scrolling box gets clipped the moment it opens on the last row. */
+.menu{
+  position:fixed; z-index:60;
+  min-width:180px; padding:var(--sp-3);
+  border:1px solid var(--line); border-radius:var(--r-2xs);
+  background:var(--bg-menu); box-shadow:var(--shadow-lg);
+  animation:menu-in var(--t) var(--ease-out);
+}
+@keyframes menu-in{ from{ opacity:0; transform:translateY(-4px); } }
+@media (prefers-reduced-motion:reduce){ .menu{ animation:none; } }
+
+.menu__item{
+  display:flex; align-items:center; gap:var(--sp-6);
+  width:100%; height:40px; padding:0 var(--sp-6);
+  border:0; border-radius:var(--r-2xs);
+  background:none; color:var(--fg-secondary);
+  font-family:var(--font); font-size:var(--fs-body-sm); font-weight:var(--fw-regular);
+  text-align:left; white-space:nowrap; cursor:pointer;
+  transition:background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.menu__item:hover{ background:var(--bg-hover); color:var(--fg); }
+.menu__item:focus-visible{ outline:2px solid var(--line-focus); outline-offset:-2px; }
+.menu__item .icon{ color:var(--fg-muted); }
+.menu__item:hover .icon{ color:inherit; }
+/* Destructive last, and the only row in a menu that takes a colour. */
+.menu__item--danger{ color:var(--danger); }
+.menu__item--danger .icon{ color:var(--danger); }
+.menu__item--danger:hover{ background:var(--danger-wash); color:var(--danger); }
+/* aria-disabled, not the disabled attribute — a disabled control cannot be
+   hovered at all in most browsers, which would silently swallow the one
+   thing a blocked row still owes: its `title` naming why. */
+.menu__item[aria-disabled="true"]{ color:var(--fg-disabled); cursor:default; }
+.menu__item[aria-disabled="true"] .icon{ color:var(--fg-disabled); }
+.menu__item[aria-disabled="true"]:hover{ background:none; }
+
+
+/* ────────────────────────────────────────────────────────── FILTER CHIP ──
+   A count and a filter in one object. The dot carries the category's colour
+   (`data-tone`, shared with anything else that ever charts these types), the
+   label names it, and the count is the fact — so the row states the
+   composition of the pile AND filters it, which used to take a select, a
+   Clear link and a footnote.
+
+   `is-on` is a real pressed state, not a hover that stuck: accent border,
+   accent wash, accent text. `chip--absent` is dashed, because "could not
+   tell" is the absence of a type rather than one more of them. */
+.chip{
+  display:inline-flex; align-items:center; gap:var(--sp-5);
+  height:34px; padding:0 var(--sp-7);
+  border:1px solid var(--line); border-radius:var(--r-full);
+  background:var(--bg-chip);
+  font-family:var(--font); font-size:var(--fs-body-sm); line-height:1;
+  color:var(--fg-secondary);
+  white-space:nowrap; cursor:pointer;
+  transition:background var(--t) var(--ease), border-color var(--t) var(--ease),
+             color var(--t) var(--ease);
+}
+.chip:hover{ background:var(--bg-control-hover); border-color:var(--line-strong); color:var(--fg); }
+.chip:focus-visible{ outline:2px solid var(--line-focus); outline-offset:2px; }
+
+.chip__dot{ width:8px; height:8px; border-radius:50%; flex:none; background:currentColor; }
+.chip__label{ min-width:0; }
+.chip__count{
+  color:var(--fg-muted); font-variant-numeric:tabular-nums;
+  font-size:var(--fs-caption);
+}
+
+/* the dot is the ONLY place the category colour appears when the chip is off,
+   so a row of chips reads as one family with five markers, not five alerts */
+.chip[data-tone="violet"] .chip__dot{ color:var(--accent-on-dark); }
+.chip[data-tone="sky"]    .chip__dot{ color:var(--info); }
+.chip[data-tone="green"]  .chip__dot{ color:var(--success); }
+.chip[data-tone="amber"]  .chip__dot{ color:var(--amber-400); }
+.chip[data-tone="muted"]  .chip__dot{ color:var(--fg-faint); }
+
+.chip.is-on{
+  background:var(--accent-wash);
+  border-color:var(--accent-line);
+  color:var(--fg);
+}
+.chip.is-on .chip__count{ color:var(--accent-on-dark); }
+.chip.is-on:hover{ background:var(--accent-wash); border-color:var(--violet-400); }
+
+/* "could not tell" is dashed, and it never takes a colour dot */
+.chip--absent{ border-style:dashed; }
+.chip--absent .chip__dot{ background:none; box-shadow:inset 0 0 0 1.5px currentColor; }
+
+/* Clear-all: the same chip, reduced to its glyph, at the end of the row. It is
+   rendered only while a filter is set, so it is never a control that does
+   nothing. Danger colour on hover because it discards what you chose. */
+.chip--clear{
+  width:34px; padding:0; justify-content:center;
+  color:var(--fg-muted);
+}
+.chip--clear:hover{
+  background:var(--danger-wash); border-color:var(--danger-line); color:var(--danger);
+}
+
+
+/* ─────────────────────────────────────────────────────────────── STEPS ──
+   The five checks, in the order they run. Not a progress bar repeated five
+   times: each step carries its OWN count, because they descend — a check can
+   only run on what the one before it passed, and seeing 74 → 72 → 66 is how
+   the officer understands where the work is actually stuck.
+
+   The connector runs between marks, never past the last one, so the row reads
+   as a sequence with an end rather than a bar that was cut short. */
+.steps{ display:grid; grid-auto-flow:column; grid-auto-columns:1fr; }
+.steps__item{ position:relative; display:flex; align-items:flex-start; gap:var(--sp-5); min-width:0; }
+.steps__item::after{
+  content:''; position:absolute; left:calc(var(--h-step) + var(--sp-5)); right:var(--sp-8);
+  top:calc(var(--h-step) / 2); height:1px;
+  background:var(--line);
+}
+.steps__item:last-child::after{ display:none; }
+.steps__mark{
+  display:grid; place-items:center; flex:none;
+  width:var(--h-step); height:var(--h-step);
+  border:1px solid var(--line-strong); border-radius:var(--r-full);
+  background:var(--bg-control); color:var(--fg-faint);
+  transition:background var(--t) var(--ease), border-color var(--t) var(--ease),
+             color var(--t) var(--ease);
+}
+.steps__text{ min-width:0; padding-top:1px; }
+.steps__label{
+  display:block;
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg-secondary);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.steps__count{
+  display:block; margin-top:1px;
+  font-size:var(--fs-caption); line-height:var(--lh-caption); color:var(--fg-faint);
+  font-variant-numeric:tabular-nums;
+}
+/* RUNNING — the one the work is in. It takes the accent ring and a pulse, so
+   the eye lands on where the run actually is without reading a single count. */
+.steps__item.is-live .steps__mark{
+  border-color:var(--accent); color:var(--accent-on-dark);
+  background:var(--accent-wash-soft);
+}
+.steps__item.is-live .steps__label{ color:var(--fg); font-weight:var(--fw-medium); }
+.steps__item.is-live .steps__mark::after{
+  content:''; position:absolute; width:var(--h-step); height:var(--h-step);
+  border-radius:var(--r-full); border:1px solid var(--accent);
+  animation:step-pulse 1.9s var(--ease-out) infinite;
+}
+@keyframes step-pulse{
+  from{ opacity:.7; transform:scale(1); }
+  to  { opacity:0;  transform:scale(1.65); }
+}
+@media (prefers-reduced-motion:reduce){ .steps__item.is-live .steps__mark::after{ animation:none; } }
+/* DONE — filled, ticked, and the label steps back: a finished check is context
+   now, not the thing being watched. */
+.steps__item.is-done .steps__mark{
+  background:var(--accent); border-color:var(--accent); color:var(--on-accent);
+}
+.steps__item.is-done .steps__count{ color:var(--fg-muted); }
+
+
+/* ────────────────────────────────────────────────────────────────── NOTICE ──
+   A fact about the page that was not true a moment ago, stated inline rather
+   than as a toast — it is not an event to acknowledge and lose, it is the
+   reason three rows below it look the way they do, and it stays as long as
+   they do. Warning only: the one other fact this product surfaces inline (a
+   zip's contents are opened automatically) turned out to read better as one
+   more plain line inside the drop zone than as a banner of its own — see
+   `.dropzone__tip` in organisms.css — so only the tone this component
+   actually needs is built. */
+.notice{
+  display:flex; align-items:center; gap:var(--sp-6); flex-wrap:wrap;
+  padding:var(--sp-6) var(--sp-8);
+  border-radius:var(--r-lg);
+}
+.notice--warn{
+  border:1px solid var(--amber-500); background:var(--tag-pending-bg);
+}
+.notice--warn .notice__icon{ color:var(--tag-pending-fg); }
+.notice__icon{
+  display:grid; place-items:center; flex:none;
+  width:22px; height:22px; border-radius:var(--r-full);
+}
+.notice__lead{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm);
+  font-weight:var(--fw-medium); color:var(--fg);
+}
+.notice__body{
+  font-size:var(--fs-body-sm); line-height:var(--lh-body-sm); color:var(--fg-secondary);
+}
+.notice__act{
+  margin-inline-start:auto; flex:none;
+  color:var(--tag-pending-fg);
+}
+.notice__act:hover{ color:var(--amber-300); }

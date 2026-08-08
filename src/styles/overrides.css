@@ -1,0 +1,18 @@
+/* ============================================================================
+   OVERRIDES — small, additive fixes layered on top of the reused token CSS.
+   The original stylesheets are kept verbatim for pixel-fidelity; anything that
+   was genuinely broken in them is corrected here instead of editing the source
+   sheets, so the fix is visible and reversible.
+   ========================================================================== */
+
+/* BRAND WORDMARK — stack the name over the tagline.
+   The original sheets style `.brand__name` / `.brand__sub` as if they were
+   block-level (the tagline even carries `margin-top:2px`), but never make
+   `.brand__text` a column — so the two spans render on one line
+   ("MOHESRCertificate checks") and the tagline runs under the collapse toggle.
+   Making the container a column restores the intended two-line wordmark and
+   lets each line respect the 36px gutter the toggle sits in. */
+.brand__text {
+  display: flex;
+  flex-direction: column;
+}
