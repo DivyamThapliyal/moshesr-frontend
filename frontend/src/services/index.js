@@ -37,3 +37,46 @@ export const listUploads = (taskId) => api.get('/uploads', { params: taskId ? { 
 /* ---- reviews / decisions ---- */
 export const createReview = (payload) => api.post('/review', payload).then((r) => r.data);
 export const listReviews = (params = {}) => api.get('/reviews', { params }).then((r) => r.data);
+
+/* ---- local document analysis ---- */
+export async function analyzeLocalDocument(path, onEvent, signal) {
+  const base = import.meta.env.VITE_API_BASE || '/api';
+  const response = await fetch(`${base.replace(/\/$/, '')}/analyze/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+    signal,
+  });
+  if (!response.ok || !response.body) {
+    let message = `Analysis request failed (${response.status})`;
+    try { message = (await response.json()).detail || message; } catch { /* keep status message */ }
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const dispatch = (block) => {
+    if (!block.trim()) return;
+    let event = 'message'; let data = '';
+    block.split(/\r?\n/).forEach((line) => {
+      if (line.startsWith('event:')) event = line.slice(6).trim();
+      if (line.startsWith('data:')) data += line.slice(5).trim();
+    });
+    if (!data) return;
+    const payload = JSON.parse(data);
+    if (event === 'error') throw new Error(payload.message || 'Document analysis failed');
+    onEvent?.(event, payload);
+  };
+
+  let reading = true;
+  while (reading) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    buffer = blocks.pop() || '';
+    blocks.forEach(dispatch);
+    if (done) reading = false;
+  }
+  dispatch(buffer);
+}

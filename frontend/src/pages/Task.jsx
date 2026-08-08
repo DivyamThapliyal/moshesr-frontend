@@ -14,7 +14,7 @@
    state that could disagree.
    ========================================================================== */
 import {
-  useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef,
+  useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState,
 } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -28,7 +28,9 @@ import {
   getDecisions, addDecision, currentDecision, isSettled,
   loadStoredDocs, saveStoredDocs, saveCreatedCard, takeJustCreated,
   getCreatedTasks, VERIFIED_STORE, RUN_TARGET_STORE, ADDED_AFTER_STORE,
+  loadLocalDocument, saveLocalDocument, loadForgeryAnalysis, saveForgeryAnalysis,
 } from '../utils/storage';
+import { analyzeLocalDocument } from '../services';
 import { readZipEntries } from '../utils/zipread';
 import useTopbar from '../hooks/useTopbar';
 import { useShell } from '../context/ShellContext';
@@ -72,7 +74,12 @@ function TypePill({ type }) {
   return <span className={`pill pill--${m.variant === 'unknown' ? 'unknown' : 'outline'}`}>{m.label}</span>;
 }
 
-export default function Task() {
+export default function TaskPage() {
+  const { id } = useParams();
+  return loadLocalDocument(id) ? <LocalDocumentTask taskId={id} /> : <FixtureTask />;
+}
+
+function FixtureTask() {
   const { id: routeId } = useParams();
   const navigate = useNavigate();
   const viewer = useViewer();
@@ -351,7 +358,7 @@ export default function Task() {
         .map((i) => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null));
       if (items.some(Boolean)) {
         const out = [];
-        for (const en of items) await walkEntry(en, 0, out); // eslint-disable-line no-await-in-loop
+        for (const en of items) await walkEntry(en, 0, out);
         beginUpload(out);
         return;
       }
@@ -1105,6 +1112,203 @@ export default function Task() {
       </AnchoredPopover>
     );
   }
+}
+
+const LOCAL_VERDICT = {
+  genuine: { label: 'Genuine', pill: 'done' },
+  minor: { label: 'Minor issue', pill: 'unknown' },
+  suspicious: { label: 'Suspicious', pill: 'pending' },
+  forged: { label: 'Forged', pill: 'late' },
+  unverifiable: { label: 'Unverifiable', pill: 'unknown' },
+};
+
+function LocalDocumentTask({ taskId }) {
+  const navigate = useNavigate();
+  const { toast, say } = useShell();
+  const task = getCreatedTasks().find((item) => item.id === taskId) || { title: 'Document verification' };
+  const [localDoc, setLocalDoc] = useState(() => loadLocalDocument(taskId));
+  const [analysis, setAnalysis] = useState(() => loadForgeryAnalysis(taskId));
+  const [running, setRunning] = useState(false);
+  const [stage, setStage] = useState('scan');
+  const [stageMessage, setStageMessage] = useState('Ready to inspect the local document.');
+  const [error, setError] = useState('');
+  const abortRef = useRef(null);
+  const stageOrder = RUN_STAGES.map((item) => item.id);
+  const stageIndex = Math.max(0, stageOrder.indexOf(stage));
+  const verdict = analysis ? LOCAL_VERDICT[analysis.verdict] : null;
+
+  const lead = useMemo(
+    () => <Crumbs trail={[{ label: 'My tasks', href: '/' }, { label: task.title }]} />,
+    [task.title],
+  );
+  useTopbar({ nav: 'tasks', crumbs: true, lead });
+
+  useEffect(() => {
+    document.title = `${task.title} | ${BRAND.name}`;
+    return () => abortRef.current?.abort();
+  }, [task.title]);
+
+  const beginAnalysis = async () => {
+    if (running) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setRunning(true);
+    setAnalysis(null);
+    setError('');
+    setStage('scan');
+    setStageMessage('Starting local validation.');
+    try {
+      await analyzeLocalDocument(localDoc.path, (event, payload) => {
+        if (event === 'stage') {
+          setStage(payload.id);
+          setStageMessage(payload.message);
+          say(payload.message);
+        }
+        if (event === 'result') {
+          const updatedDocument = {
+            ...localDoc,
+            name: payload.facts.filename,
+            type: payload.facts.document_type || 'unknown',
+            institution: payload.facts.institution,
+            pages: payload.facts.pages || 1,
+            size: payload.facts.size_bytes,
+          };
+          saveLocalDocument(taskId, updatedDocument);
+          saveForgeryAnalysis(taskId, payload);
+          saveCreatedCard(taskId, {
+            status: payload.verdict === 'genuine' ? 'done' : 'pending',
+            stat: payload.verdict === 'genuine' ? 'No visible problems' : '1 needs review',
+            action: payload.verdict === 'genuine' ? 'Open' : 'Review',
+          });
+          setLocalDoc(updatedDocument);
+          setAnalysis(payload);
+          toast(`Analysis finished: ${LOCAL_VERDICT[payload.verdict]?.label || payload.verdict}`, { icon: 'check' });
+        }
+      }, controller.signal);
+    } catch (requestError) {
+      if (requestError.name !== 'AbortError') {
+        setError(requestError.message || 'Document analysis failed.');
+        toast(requestError.message || 'Document analysis failed.', { icon: 'alert-circle', tone: 'danger' });
+      }
+    } finally {
+      abortRef.current = null;
+      setRunning(false);
+    }
+  };
+
+  const stopAnalysis = () => {
+    abortRef.current?.abort();
+    setRunning(false);
+    setStageMessage('Verification stopped.');
+    say('Verification stopped');
+  };
+
+  return (
+    <div className="detail">
+      <section className="pagehead" aria-labelledby="taskTitle">
+        <div className="pagehead__row">
+          <h2 className="pagehead__title" id="taskTitle">{task.title}</h2>
+          <span className="pagehead__state">
+            <span className={`pill pill--${running ? 'progress' : verdict?.pill || 'new'}`}>
+              {running ? 'Verifying' : verdict?.label || 'New'}
+            </span>
+          </span>
+        </div>
+        <p className="pagehead__meta">{localDoc.path}</p>
+      </section>
+
+      {running ? (
+        <section className="monitor" aria-label="Verification progress" aria-live="polite">
+          <div className="monitor__top">
+            <span className="pill pill--progress">Verifying</span>
+            <span className="monitor__count">{stageMessage}</span>
+            <button className="btn btn--ghost btn--sm" type="button" onClick={stopAnalysis}>Stop</button>
+          </div>
+          <div className="progress progress--live" role="progressbar" aria-valuenow={stageIndex + 1} aria-valuemin={0} aria-valuemax={RUN_STAGES.length}>
+            <div className="progress__fill" style={{ width: `${((stageIndex + 1) / RUN_STAGES.length) * 100}%` }} />
+          </div>
+          <div className="monitor__steps steps">
+            {RUN_STAGES.map((item, index) => (
+              <div className={`steps__item${index < stageIndex ? ' is-done' : ''}${index === stageIndex ? ' is-live' : ''}`} title={item.note} key={item.id}>
+                <span className="steps__mark">{index < stageIndex ? <Icon name="check" size={13} /> : null}</span>
+                <span className="steps__text"><span className="steps__label">{item.label}</span><span className="steps__count">{index < stageIndex ? 'Done' : index === stageIndex ? 'Running' : 'Waiting'}</span></span>
+              </div>
+            ))}
+          </div>
+          <p className="monitor__note">The document is read from its local path and is not copied into application storage.</p>
+        </section>
+      ) : null}
+
+      {error && !running ? (
+        <div className="notice notice--warn" role="alert">
+          <span className="notice__icon"><Icon name="alert-circle" size={16} /></span>
+          <span className="notice__lead">Analysis failed.</span>
+          <span className="notice__body">{error}</span>
+        </div>
+      ) : null}
+
+      {!analysis && !running ? (
+        <>
+          <section className="dtable" aria-label="Local document" style={{ '--dtable-cols': 'minmax(240px,1.5fr) 180px 180px 36px' }}>
+            <div className="dtable__head"><div>Certificate</div><div>Type</div><div>Source</div><div /></div>
+            <div className="dtable__row">
+              <div className="dtable__cert"><span className="thumb"><Icon name="file-text" size={18} /></span><span className="dtable__name">{localDoc.name}</span></div>
+              <div><span className="pill pill--outline">{localDoc.type || 'unknown'}</span></div>
+              <div><span className="dtable__cell">Local path</span></div>
+              <div />
+            </div>
+          </section>
+          <section className="runbar" aria-label="Run the checks">
+            <div className="runbar__info">
+              <p className="runbar__est">Analyze this document for visible forgery indicators</p>
+              <p className="runbar__sub">No external registry or known-forgery collection will be queried.</p>
+            </div>
+            <div className="runbar__actions">
+              <button className="btn btn--primary" type="button" onClick={beginAnalysis}>Start verification</button>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {analysis && !running ? (
+        <>
+          <section className="monitor" aria-label="Verification result">
+            <div className="monitor__top">
+              <span className={`pill pill--${verdict.pill}`}>{verdict.label}</span>
+              <span className="monitor__count">{analysis.summary}</span>
+              <div className="monitor__cta">
+                <button className="btn btn--primary" type="button" onClick={() => navigate(`/review/${taskId}`)}>Review analysis</button>
+                <button className="btn btn--secondary" type="button" onClick={beginAnalysis}>Check again</button>
+              </div>
+            </div>
+            <div className="monitor__summary">
+              <Figure n={`${analysis.confidence}%`} label="model confidence" />
+              <Figure n={analysis.findings.length} label="visible findings" />
+              <Figure n={analysis.facts.pages} label="pages inspected" />
+            </div>
+          </section>
+          <section className="found" aria-label="Forgery findings">
+            <div className="found__head">
+              <div><span className="label">Analysis result</span><p className="found__done-note">Human review is required before acting on this assessment.</p></div>
+            </div>
+            {analysis.findings.length ? (
+              <div className="dtable" style={{ '--dtable-cols': 'minmax(180px,0.8fr) minmax(260px,1.6fr) 160px 36px' }}>
+                <div className="dtable__head"><div>Check</div><div>Finding</div><div>Evidence</div><div /></div>
+                {analysis.findings.map((finding, index) => (
+                  <div className="dtable__row" key={`${finding.stage}-${index}`}>
+                    <div><span className="pill pill--pending">{RUN_STAGES.find((item) => item.id === finding.stage)?.label || finding.stage}</span></div>
+                    <div><span className="dtable__cell">{finding.summary}</span></div>
+                    <div><span className="dtable__cell">{finding.evidence}</span></div>
+                    <div />
+                  </div>
+                ))}
+              </div>
+            ) : <p className="dtable__empty">No visible tampering indicators were found. This is not proof of authenticity.</p>}
+          </section>
+        </>
+      ) : null}
+    </div>
+  );
 }
 
 function Figure({ n, label, note }) {

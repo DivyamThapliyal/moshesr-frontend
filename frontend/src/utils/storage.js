@@ -13,6 +13,8 @@ const LIVE_KEY = 'mohsar.liveTasks';
 const DECISIONS_KEY = 'mohsar.decisions';
 const TASK_STATE_KEY = 'mohsar.taskState';
 const CREATED_KEY = 'mohsar.created';
+const LOCAL_DOCUMENT_KEY = 'mohsar.localDocuments';
+const ANALYSIS_KEY = 'mohsar.forgeryAnalyses';
 
 /* ---------------------------------------------------------------- LIVE RUNS */
 export function getLiveRuns() {
@@ -181,3 +183,22 @@ export function addCreatedTask(task) {
   list.unshift(task);
   try { sessionStorage.setItem(CREATED_KEY, JSON.stringify(list)); } catch { /* ignore */ }
 }
+
+/* --------------------------------------- LOCAL DOCUMENT FORGERY ANALYSIS */
+function taskRecord(key, taskId, value) {
+  try {
+    const all = JSON.parse(sessionStorage.getItem(key) || '{}');
+    if (value !== undefined) {
+      all[taskId] = value;
+      sessionStorage.setItem(key, JSON.stringify(all));
+    }
+    return all[taskId] || null;
+  } catch {
+    return null;
+  }
+}
+
+export const saveLocalDocument = (taskId, document) => taskRecord(LOCAL_DOCUMENT_KEY, taskId, document);
+export const loadLocalDocument = (taskId) => taskRecord(LOCAL_DOCUMENT_KEY, taskId);
+export const saveForgeryAnalysis = (taskId, analysis) => taskRecord(ANALYSIS_KEY, taskId, analysis);
+export const loadForgeryAnalysis = (taskId) => taskRecord(ANALYSIS_KEY, taskId);

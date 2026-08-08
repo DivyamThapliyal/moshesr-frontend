@@ -14,6 +14,7 @@ import {
 } from '../data';
 import {
   isSettled, currentDecision, addDecision, popDecision,
+  loadForgeryAnalysis, loadLocalDocument, getCreatedTasks,
 } from '../utils/storage';
 import { certPage, certFacts, seeded } from '../utils/certs';
 import useTopbar from '../hooks/useTopbar';
@@ -92,7 +93,13 @@ function regionRect(d, key, page, totalPages) {
   return null;
 }
 
-export default function Review() {
+export default function ReviewPage() {
+  const { id } = useParams();
+  const analysis = loadForgeryAnalysis(id);
+  return analysis ? <LocalAnalysisReview taskId={id} analysis={analysis} /> : <FixtureReview />;
+}
+
+function FixtureReview() {
   const { id: routeId } = useParams();
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -517,4 +524,120 @@ export default function Review() {
       </>
     );
   }
+}
+
+const LOCAL_VERDICT = {
+  genuine: { label: 'Genuine', pill: 'done' },
+  minor: { label: 'Minor issue', pill: 'unknown' },
+  suspicious: { label: 'Suspicious', pill: 'pending' },
+  forged: { label: 'Forged', pill: 'late' },
+  unverifiable: { label: 'Unverifiable', pill: 'unknown' },
+};
+
+function LocalAnalysisReview({ taskId, analysis }) {
+  const navigate = useNavigate();
+  const localDocument = loadLocalDocument(taskId);
+  const task = getCreatedTasks().find((item) => item.id === taskId) || { title: 'Document verification' };
+  const verdict = LOCAL_VERDICT[analysis.verdict] || LOCAL_VERDICT.unverifiable;
+  const facts = analysis.facts;
+  const lead = useMemo(
+    () => (
+      <Crumbs trail={[
+        { label: 'My tasks', href: '/' },
+        { label: task.title, href: `/task/${taskId}` },
+        { label: 'Analysis' },
+      ]}
+      />
+    ),
+    [task.title, taskId],
+  );
+  useTopbar({ nav: 'tasks', crumbs: true, lead });
+
+  useEffect(() => {
+    document.title = `${facts.filename} | ${BRAND.name}`;
+  }, [facts.filename]);
+
+  return (
+    <>
+      <section className="pagehead pagehead--review" aria-labelledby="reviewTitle">
+        <div className="pagehead__row">
+          <h2 className="pagehead__title" id="reviewTitle" title={facts.filename}>{facts.filename}</h2>
+          <span className="pagehead__state">
+            <span className={`pill pill--${verdict.pill}`}>{verdict.label}</span>
+            <span className="revconf">
+              <span className="revconf__n">{analysis.confidence}</span>
+              <span className="revconf__w">{`${confidenceWord(analysis.confidence)} confidence`}</span>
+            </span>
+          </span>
+        </div>
+        <p className="pagehead__meta">
+          {[facts.holder_name, facts.award, facts.institution, facts.issue_date].filter(Boolean).join(' | ') || 'No document facts were extracted'}
+        </p>
+      </section>
+
+      <div className="review" id="review">
+        <aside className="review__queue" aria-label="Analysis summary">
+          <div className="revq__head"><span className="revq__title">Assessment</span></div>
+          <div className="revq__list">
+            <div className="revq__row is-active">
+              <span className="revq__name">{facts.filename}</span>
+              <span className="revq__sub"><span className={`pill pill--${verdict.pill}`}>{verdict.label}</span><span className="revq__n">{`${analysis.findings.length} findings`}</span></span>
+            </div>
+          </div>
+          <p className="revq__note">This result applies only to visible content and local file metadata.</p>
+        </aside>
+
+        <section className="review__stage" aria-label="Local document reference">
+          <div className="revdone">
+            <span className="dropzone__tile" aria-hidden="true"><Icon name="file-text" size={30} /></span>
+            <p className="revdone__title">{facts.filename}</p>
+            <p className="pagehead__meta">{localDocument?.path}</p>
+            <div className="monitor__summary">
+              <div className="monitor__figure"><span className="monitor__figure-n">{facts.pages}</span><span className="monitor__figure-label">pages</span></div>
+              <div className="monitor__figure"><span className="monitor__figure-n">{Math.max(1, Math.round(facts.size_bytes / 1024))}</span><span className="monitor__figure-label">KB</span></div>
+            </div>
+            <p className="revstage__hint">The browser cannot preview an absolute local path. The backend did not store a document copy.</p>
+            <div className="revdone__actions">
+              <button className="btn btn--primary" type="button" onClick={() => navigate(`/task/${taskId}`)}>Back to task</button>
+              <button className="btn btn--secondary" type="button" onClick={() => navigate('/')}>My tasks</button>
+            </div>
+          </div>
+        </section>
+
+        <aside className="review__panel" aria-label="Findings">
+          <div className="revtabs" role="tablist"><button className="tab is-active" role="tab" aria-selected="true"><span className="tab__label">The analysis</span></button></div>
+          <div className="revpanel__scroll">
+            <p className="panel__title">Why this verdict was returned</p>
+            <p className="revfinding__detail">{analysis.summary}</p>
+            {analysis.findings.length ? (
+              <ol className="revfindings">
+                {analysis.findings.map((finding, index) => (
+                  <li className="revfinding" key={`${finding.stage}-${index}`}>
+                    <span className="revfinding__n">{index + 1}</span>
+                    <div className="revfinding__body">
+                      <div className="revfinding__row"><span className="revfinding__summary">{finding.summary}</span><span className="revfinding__ev">{finding.evidence}</span></div>
+                      {finding.detail ? <p className="revfinding__detail">{finding.detail}</p> : null}
+                      <p className="revfinding__detail">{`Page ${finding.page} | ${RUN_STAGES.find((item) => item.id === finding.stage)?.label || finding.stage}`}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            ) : <p className="dtable__empty">No visible tampering indicators were found. This is not proof of authenticity.</p>}
+
+            <p className="panel__title">Document facts</p>
+            <ol className="revchecks">
+              <li className="revcheck"><span className="revcheck__dot" /><span className="revcheck__label">Type</span><span className="revcheck__result">{facts.document_type}</span></li>
+              <li className="revcheck"><span className="revcheck__dot" /><span className="revcheck__label">Institution</span><span className="revcheck__result">{facts.institution || 'Not extracted'}</span></li>
+              <li className="revcheck"><span className="revcheck__dot" /><span className="revcheck__label">Cross-check</span><span className="revcheck__result">Not available</span></li>
+            </ol>
+
+            <div className="notice notice--warn" role="note">
+              <span className="notice__icon"><Icon name="info" size={16} /></span>
+              <span className="notice__body">{analysis.limitations.join(' ')}</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </>
+  );
 }
